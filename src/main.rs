@@ -41,7 +41,7 @@ fn main() {
     let h = 480;
     let num_samples: isize = 50; // will be evaluated to num_samples * 4
     let cam = Ray {
-        o: Tup(50. - 50., 52. - 52., 295.6),
+        o: Tup(50. - 50., 52. - 52., 295.6 - 50.),
         d: Tup(0., -0.046, -1.).norm(),
     };
 

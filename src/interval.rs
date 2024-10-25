@@ -3,11 +3,11 @@ use num_traits::Pow;
 use super::ray::Ray;
 use super::tup::Tup;
 
-// const G: f64 = 1e-5; //6.6743e-11;
-// const M: f64 = 2.5;
+const G: f64 = 1.;
+const M: f64 = 0.;
 const R: f64 = 5.;
 
-const RS: f64 = 0.1; //2. * G * M;
+const RS: f64 = 2.*G*M;
 const A: f64 = 1. + (RS / (4. * R));
 const B: f64 = 1. - (RS / (4. * R));
 
