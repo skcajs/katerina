@@ -107,9 +107,9 @@ impl World {
         let mut step_size: f64 = 5.;
         let initial_sigma = 1e-3;
         let mut sigma = initial_sigma;
-    
+
         let mut next;
-    
+
         while current_distance < max_distance {
             next = true;
             for i in (0..self.spheres.len()).rev() {
@@ -128,17 +128,17 @@ impl World {
                     }
                 }
             }
-    
+
             if next {
                 let new_ray = schwarszchild(ray, step_size);
                 *ray = new_ray;
                 current_distance += step_size;
-    
+
                 // Gradually increase step size when far from spheres to improve performance
                 step_size = (step_size * 1.05).min(1.0);
             }
         }
-    
+
         *t = f64::INFINITY;
         false // No intersection found within max_distance
     }
