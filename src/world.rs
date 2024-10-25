@@ -16,56 +16,56 @@ impl World {
                 // Scene: radius, position, emission, color, material
                 Sphere::new(
                     1e5,
-                    Tup(1e5 - 49., -11.2, 81.6 - 50.),
+                    Tup(1e5 - 49., -11.2, 81.6 - 25.),
                     Tup::zeros(),
                     Tup(0.75, 0.25, 0.25),
                     RflType::DIFF,
                 ), // Left
                 Sphere::new(
                     1e5,
-                    Tup(-1e5 + 49., -11.2, 81.6- 50.),
+                    Tup(-1e5 + 49., -11.2, 81.6 - 25.),
                     Tup::zeros(),
                     Tup(0.25, 0.25, 0.75),
                     RflType::DIFF,
                 ), // Right
                 Sphere::new(
                     1e5,
-                    Tup(0., -11.2, 1e5- 50.),
+                    Tup(0., -11.2, 1e5 - 25.),
                     Tup::zeros(),
                     Tup(0.75, 0.75, 0.75),
                     RflType::DIFF,
                 ), // Back
                 Sphere::new(
                     1e5,
-                    Tup(0., -11.2, -1e5 + 170. - 50.),
+                    Tup(0., -11.2, -1e5 + 170. - 25.),
                     Tup::zeros(),
                     Tup::zeros(),
                     RflType::DIFF,
                 ), // Front
                 Sphere::new(
                     1e5,
-                    Tup(0., 1e5 - 52., 81.6 - 50.),
+                    Tup(0., 1e5 - 52., 81.6 - 25.),
                     Tup::zeros(),
                     Tup(0.75, 0.75, 0.75),
                     RflType::DIFF,
                 ), // Bottom
                 Sphere::new(
                     1e5,
-                    Tup(0., -1e5 + 29.6, 81.6 - 50.),
+                    Tup(0., -1e5 + 29.6, 81.6 - 25.),
                     Tup::zeros(),
                     Tup(0.75, 0.75, 0.75),
                     RflType::DIFF,
                 ), // Top
                 Sphere::new(
                     16.5,
-                    Tup(-23., -35.5, 47.0 - 50.),
+                    Tup(-23., -35.5, 47.0 - 25.),
                     Tup::zeros(),
                     Tup(1., 1., 1.) * 0.999,
                     RflType::SPEC,
                 ), // Mirror
                 Sphere::new(
                     16.5,
-                    Tup(23., -35.5, 78. - 50.),
+                    Tup(23., -35.5, 78. - 25.),
                     Tup::zeros(),
                     Tup(1., 1., 1.) * 0.999,
                     RflType::REFR,
@@ -79,7 +79,7 @@ impl World {
                 // ), // BH
                 Sphere::new(
                     600.,
-                    Tup(0., 629.6 - 0.27, 81.6 - 50.),
+                    Tup(0., 629.6 - 0.27, 81.6 - 25.),
                     Tup(12., 12., 12.),
                     Tup::zeros(),
                     RflType::DIFF,
@@ -103,12 +103,13 @@ impl World {
     pub fn trace_geodesic(&self, ray: &mut Ray, t: &mut f64, id: &mut usize) -> bool {
         *t = f64::INFINITY;
         let max_distance: f64 = 200.0;
-        let mut step_size: f64 = 10.;
         let mut current_distance = 0.0;
-        let sigma = 1.;
-
+        let mut step_size: f64 = 5.;
+        let initial_sigma = 1e-3;
+        let mut sigma = initial_sigma;
+    
         let mut next;
-
+    
         while current_distance < max_distance {
             next = true;
             for i in (0..self.spheres.len()).rev() {
@@ -120,17 +121,24 @@ impl World {
                         return true; // Intersection found
                     } else {
                         next = false;
-                        step_size *= 0.5;
+                        // Reduce step size gradually to prevent performance drop
+                        step_size *= 0.75;
+                        // Dynamically adapt `sigma` for higher precision when needed
+                        sigma = initial_sigma * (d / step_size).min(5.);
                     }
                 }
             }
-
+    
             if next {
-                *ray = schwarszchild(ray, step_size);
+                let new_ray = schwarszchild(ray, step_size);
+                *ray = new_ray;
                 current_distance += step_size;
+    
+                // Gradually increase step size when far from spheres to improve performance
+                step_size = (step_size * 1.05).min(1.0);
             }
         }
-
+    
         *t = f64::INFINITY;
         false // No intersection found within max_distance
     }

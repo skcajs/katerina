@@ -2,7 +2,7 @@ use super::ray::Ray;
 use super::tup::Tup;
 
 const G: f64 = 1.;
-const M: f64 = 1.25;
+const M: f64 = 2.5;
 const RS: f64 = 2.*G*M;
 
 
@@ -20,7 +20,9 @@ pub fn schwarszchild(ray: &Ray, h: f64) -> Ray {
     let previous_point = ray.o;
     let previous_momentum = ray.d;
 
-    let r: f64 = previous_point.len();
+    let s: Tup = Tup(0.,-10.,50.);
+
+    let r: f64 = (previous_point-s).len();
 
     let a: f64 = 1. + (RS / (4. * r));
     let b: f64 = 1. - (RS / (4. * r));
@@ -46,7 +48,7 @@ pub fn schwarszchild(ray: &Ray, h: f64) -> Ray {
         fact_p1, fact_p2, r
     );
 
-    let k4x = fx(previous_momentum + k3p * 0.5 * h, fact_x);
+    let k4x = fx(previous_momentum + k3p * h, fact_x);
     let k4p = fp(previous_momentum + k3p * h, previous_point + k3x * h, fact_p1, fact_p2, r);
 
     let current_point = previous_point + ((k1x + k2x * 2. + k3x * 2. + k4x) * (h / 6.));
