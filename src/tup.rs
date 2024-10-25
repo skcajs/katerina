@@ -12,6 +12,10 @@ impl Tup {
         Tup(1., 1., 1.)
     }
 
+    pub fn len(&self) -> f64 {
+        f64::sqrt(self.0.powf(2.) + self.1.powf(2.) + self.2.powf(2.))
+    }
+
     pub fn norm(self) -> Self {
         self * (1.0 / (self.0 * self.0 + self.1 * self.1 + self.2 * self.2).sqrt())
     }

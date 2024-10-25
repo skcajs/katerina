@@ -70,13 +70,13 @@ impl World {
                     Tup(1., 1., 1.) * 0.999,
                     RflType::REFR,
                 ), // Glass
-                Sphere::new(
-                    12.,
-                    Tup(0., 0., 0.),
-                    Tup::zeros(),
-                    Tup(1., 1., 1.) * 0.999,
-                    RflType::REFR,
-                ), // BH
+                // Sphere::new(
+                //     12.,
+                //     Tup(0., 0., 0.),
+                //     Tup::zeros(),
+                //     Tup(1., 1., 1.) * 0.999,
+                //     RflType::REFR,
+                // ), // BH
                 Sphere::new(
                     600.,
                     Tup(0., 629.6 - 0.27, 81.6 - 50.),
