@@ -105,8 +105,7 @@ impl World {
         let max_distance: f64 = 200.0;
         let mut current_distance = 0.0;
         let mut step_size: f64 = 5.;
-        let initial_sigma = 1e-3;
-        let mut sigma = initial_sigma;
+        let sigma = 1e-10;
 
         let mut next;
 
@@ -121,10 +120,7 @@ impl World {
                         return true; // Intersection found
                     } else {
                         next = false;
-                        // Reduce step size gradually to prevent performance drop
-                        step_size *= 0.75;
-                        // Dynamically adapt `sigma` for higher precision when needed
-                        sigma = initial_sigma * (d / step_size).min(5.);
+                        step_size *= 0.5;
                     }
                 }
             }
