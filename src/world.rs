@@ -102,14 +102,13 @@ impl World {
 
     pub fn trace_geodesic(&self, ray: &mut Ray, t: &mut f64, id: &mut usize) -> bool {
         *t = f64::INFINITY;
-        let max_distance: f64 = 200.0;
-        let mut current_distance = 0.0;
+        let max_iter = 300.0;
         let mut step_size: f64 = 5.;
-        let sigma = 1e-10;
+        let sigma = 1e-5;
 
         let mut next;
 
-        while current_distance < max_distance {
+        for _ in 0..max_iter as usize {
             next = true;
             for i in (0..self.spheres.len()).rev() {
                 let d = self.spheres[i].intersect(&ray);
@@ -128,9 +127,7 @@ impl World {
             if next {
                 let new_ray = schwarszchild(ray, step_size);
                 *ray = new_ray;
-                current_distance += step_size;
 
-                // Gradually increase step size when far from spheres to improve performance
                 step_size = (step_size * 1.05).min(1.0);
             }
         }
