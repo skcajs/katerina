@@ -1,6 +1,6 @@
 use core::f64;
 
-use super::interval::{minkowski, schwarszchild};
+use super::interval::{minkowski, schwarzschild};
 use super::ray::Ray;
 use super::sphere::{RflType, Sphere};
 use super::tup::Tup;
@@ -104,30 +104,27 @@ impl World {
         *t = f64::INFINITY;
         let max_iter = 300.0;
         let mut step_size: f64 = 5.;
-        let sigma = 1e-5;
-
-        let mut next;
+        let sigma = 1e-10;
 
         for _ in 0..max_iter as usize {
-            next = true;
-            for i in (0..self.spheres.len()).rev() {
+            let mut hit = false;
+            for (i, sphere) in self.spheres.iter().enumerate() {
                 let d = self.spheres[i].intersect(&ray);
-                if d != 0.0 && d < step_size {
+                if d > 0.0 && d < step_size {
                     if d < sigma {
                         *t = d;
                         *id = i;
-                        return true; // Intersection found
+                        return true;
                     } else {
-                        next = false;
+                        hit = true;
                         step_size *= 0.5;
+                        break;
                     }
                 }
             }
 
-            if next {
-                let new_ray = schwarszchild(ray, step_size);
-                *ray = new_ray;
-
+            if !hit {
+                *ray = schwarzschild(ray, step_size);
                 step_size = (step_size * 1.05).min(1.0);
             }
         }

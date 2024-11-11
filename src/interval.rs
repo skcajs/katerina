@@ -16,7 +16,7 @@ pub fn minkowski(ray: &Ray, h: f64) -> Ray {
     }
 }
 
-pub fn schwarszchild(ray: &Ray, h: f64) -> Ray {
+pub fn schwarzschild(ray: &Ray, h: f64) -> Ray {
     let previous_point = ray.o;
     let previous_momentum = ray.d;
 
@@ -49,7 +49,7 @@ pub fn schwarszchild(ray: &Ray, h: f64) -> Ray {
 
     Ray {
         o: current_point,
-        d: current_momentum,
+        d: current_momentum.norm(),
     }
 }
 
