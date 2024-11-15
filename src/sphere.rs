@@ -22,6 +22,10 @@ impl Sphere {
         Sphere { r, p, e, c, rfl }
     }
 
+    pub fn sdf(&self, p: Tup) -> f64 {
+        (p - self.p).len() - self.r
+    }
+
     pub fn intersect(&self, ray: &Ray) -> f64 {
         let eps = 1e-12;
         let op = self.p - ray.o;

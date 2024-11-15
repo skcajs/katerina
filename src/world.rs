@@ -102,30 +102,35 @@ impl World {
 
     pub fn trace_geodesic(&self, ray: &mut Ray, t: &mut f64, id: &mut usize) -> bool {
         *t = f64::INFINITY;
-        let max_iter = 300.0;
-        let mut step_size: f64 = 5.;
-        let sigma = 1e-10;
+        let max_iter = 400.0;
+        let mut step_size: f64 = 10.0;
+        let sigma = 1e-1;
 
         for _ in 0..max_iter as usize {
+            let next_ray = schwarzschild(ray, step_size);
             let mut hit = false;
+
             for (i, sphere) in self.spheres.iter().enumerate() {
-                let d = self.spheres[i].intersect(&ray);
-                if d > 0.0 && d < step_size {
-                    if d < sigma {
-                        *t = d;
+                let current_distance = sphere.sdf(ray.o);
+                let next_distance = sphere.sdf(next_ray.o);
+
+                if current_distance * next_distance < 0.0 {
+                    if current_distance.abs() < sigma {
+                        *t = current_distance;
                         *id = i;
                         return true;
                     } else {
-                        hit = true;
                         step_size *= 0.5;
+                        hit = true;
                         break;
                     }
                 }
             }
 
+            // Only update ray if no intersection was found in this iteration
             if !hit {
-                *ray = schwarzschild(ray, step_size);
-                step_size = (step_size * 1.05).min(1.0);
+                *ray = next_ray;
+                step_size = (step_size * 1.05).min(1.0); // Similar step size increase as in the original
             }
         }
 

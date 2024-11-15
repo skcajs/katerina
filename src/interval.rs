@@ -5,7 +5,7 @@ const G: f64 = 1.;
 const M: f64 = 2.5;
 const RS: f64 = 2. * G * M;
 
-const S: Tup = Tup(0., -10., 50.);
+const S: Tup = Tup(0., -10., 60.);
 
 pub fn minkowski(ray: &Ray, h: f64) -> Ray {
     let current_point = ray.o + ray.d * h;
