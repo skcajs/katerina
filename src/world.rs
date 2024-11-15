@@ -104,12 +104,12 @@ impl World {
         *t = f64::INFINITY;
         let max_iter = 300.0;
         let mut step_size: f64 = 5.;
-        let sigma = 1e-10;
+        let sigma = 1e-3;
 
         for _ in 0..max_iter as usize {
             let mut hit = false;
             for (i, sphere) in self.spheres.iter().enumerate() {
-                let d = self.spheres[i].intersect(&ray);
+                let d = sphere.intersect(&ray);
                 if d > 0.0 && d < step_size {
                     if d < sigma {
                         *t = d;
