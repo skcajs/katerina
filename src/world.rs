@@ -1,6 +1,6 @@
 use core::f64;
 
-use super::interval::{minkowski, schwarzschild};
+use super::interval::schwarzschild;
 use super::ray::Ray;
 use super::sphere::{RflType, Sphere};
 use super::tup::Tup;
@@ -32,14 +32,14 @@ impl World {
                     1e5,
                     Tup(0., -11.2, 1e5 - 25.),
                     Tup::zeros(),
-                    Tup(0.75, 0.75, 0.75),
+                    Tup(0.25, 0.75, 0.75),
                     RflType::DIFF,
                 ), // Back
                 Sphere::new(
                     1e5,
                     Tup(0., -11.2, -1e5 + 170. - 25.),
                     Tup::zeros(),
-                    Tup::zeros(),
+                    Tup(0.75, 0.75, 0.25),
                     RflType::DIFF,
                 ), // Front
                 Sphere::new(
@@ -63,6 +63,13 @@ impl World {
                     Tup(1., 1., 1.) * 0.999,
                     RflType::SPEC,
                 ), // Mirror
+                // Sphere::new(
+                //     12.5,
+                //     Tup(0., -10., 60.),
+                //     Tup::zeros(),
+                //     Tup(1., 1., 1.) * 0.999,
+                //     RflType::SPEC,
+                // ), // Mirror
                 Sphere::new(
                     16.5,
                     Tup(23., -35.5, 78. - 25.),
@@ -102,9 +109,13 @@ impl World {
 
     pub fn trace_geodesic(&self, ray: &mut Ray, t: &mut f64, id: &mut usize) -> bool {
         *t = f64::INFINITY;
-        let max_iter = 300.0;
+        let max_iter = 400.0;
         let mut step_size: f64 = 5.;
         let sigma = 1e-3;
+
+        // Testing
+        let s: Tup = Tup(0., -11.5, 60.);
+        let rs: f64 = 5.;
 
         for _ in 0..max_iter as usize {
             let mut hit = false;
@@ -125,6 +136,9 @@ impl World {
 
             if !hit {
                 *ray = schwarzschild(ray, step_size);
+                if (ray.o - s).len() < rs {
+                    return false;
+                }
                 step_size = (step_size * 1.05).min(1.0);
             }
         }
