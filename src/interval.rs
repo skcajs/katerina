@@ -10,7 +10,7 @@ use super::tup::Tup;
 //122.8
 
 const RS: f64 = 5.;
-const S: Tup = Tup(0., -11.5, 60.);
+const S: Tup = Tup(0., -11.2, 60.);
 
 #[allow(dead_code)]
 pub fn minkowski(ray: &Ray, h: f64) -> Ray {

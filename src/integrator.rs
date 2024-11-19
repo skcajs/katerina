@@ -130,8 +130,13 @@ pub fn radiance_iter(world: &World, mut ray: Ray, mut depth: i32, sampler: &mut 
     loop {
         let mut t = f64::INFINITY;
         let mut id: usize = 0;
-        if !world.trace_geodesic(&mut ray, &mut t, &mut id) {
+        let mut test_color = false;
+        if !world.trace_geodesic(&mut ray, &mut t, &mut id, &mut test_color) {
             return result;
+        }
+
+        if test_color {
+            return Tup(0.8, 0., 0.8);
         }
 
         let obj: &Sphere = &world.spheres[id];
