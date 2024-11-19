@@ -10,8 +10,8 @@ use super::tup::Tup;
 //122.8
 
 const RS: f64 = 5.;
-// const S: Tup = Tup(0., -11.2, 60.);
-const S: Tup = Tup(0., 0., 0.);
+const S: Tup = Tup(0., -10., 60.);
+// const S: Tup = Tup(0., 0., 0.);
 
 #[allow(dead_code)]
 pub fn minkowski(ray: &Ray, h: f64) -> Ray {
@@ -69,6 +69,27 @@ pub fn fp(p: Tup, x: Tup) -> Tup {
         * RS
 }
 
+pub fn euler(ray: &Ray, h: f64) -> Ray {
+    let pos = ray.o;
+    let dir = ray.d.norm();
+
+    let r: f64 = (pos - S).len();
+
+    if r < 1. {
+        return Ray { o: pos, d: dir };
+    }
+
+    let h2 = pos.cross(dir).len().powi(2);
+
+    let new_pos = pos + dir * h;
+    let new_dir = dir + (pos * -1.5 * h2 * (1. / r.powi(2).powf(2.5) * h));
+
+    Ray {
+        o: new_pos,
+        d: new_dir,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -77,10 +98,10 @@ mod tests {
     #[test]
     fn some_function_test() {
         let camera_position = Tup(0., 0., -10.);
-        let num_rays = 1000;
+        let num_rays = 100;
         // let ray_range = 10.;
-        let h = 5.;
-        let steps = 100;
+        let h = 0.5;
+        let steps = 2000;
 
         let mut output = File::create("ray_paths.csv").expect("Unable to create file");
 
@@ -100,7 +121,7 @@ mod tests {
             let mut current_ray = ray;
 
             for _ in 0..steps {
-                current_ray = schwarzschild(&current_ray, h);
+                current_ray = euler(&current_ray, h);
                 path.push(current_ray.o);
             }
 
@@ -119,8 +140,8 @@ mod tests {
     fn some_other_function_test() {
         let num_rays = 40;
         let ray_range = 40.;
-        let h = 5.;
-        let steps = 100;
+        let h = 0.5;
+        let steps = 1000;
 
         let mut output = File::create("ray_paths.csv").expect("Unable to create file");
 
@@ -137,7 +158,7 @@ mod tests {
             let mut current_ray = ray;
 
             for _ in 0..steps {
-                current_ray = schwarzschild(&current_ray, h);
+                current_ray = euler(&current_ray, h);
                 path.push(current_ray.o);
             }
 

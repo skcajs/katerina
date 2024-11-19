@@ -1,5 +1,7 @@
 use core::f64;
 
+use crate::interval::euler;
+
 use super::interval::schwarzschild;
 use super::ray::Ray;
 use super::sphere::{RflType, Sphere};
@@ -115,13 +117,13 @@ impl World {
         test_color: &mut bool,
     ) -> bool {
         *t = f64::INFINITY;
-        let max_iter = 400.0;
-        let mut step_size: f64 = 5.;
+        let max_iter = 500.0;
+        let mut step_size: f64 = 0.5;
         let sigma = 1e-3;
 
         // Testing
-        let s: Tup = Tup(0., -11.5, 60.);
-        let rs: f64 = 5.;
+        // let s: Tup = Tup(0., -11.5, 60.);
+        // let rs: f64 = 5.;
 
         for _ in 0..max_iter as usize {
             let mut hit = false;
@@ -141,7 +143,7 @@ impl World {
             }
 
             if !hit {
-                *ray = schwarzschild(ray, step_size);
+                *ray = euler(ray, step_size);
 
                 // if ray.o.1.abs() < 0.1 && ray.o.len() > 5. && ray.o.len() < 10. {
                 //     *test_color = true;
