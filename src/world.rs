@@ -1,6 +1,6 @@
 use core::f64;
 
-use super::interval::schwarzschild;
+use super::interval::Metric;
 use super::ray::Ray;
 use super::sphere::{RflType, Sphere};
 use super::tup::Tup;
@@ -32,14 +32,14 @@ impl World {
                     1e5,
                     Tup(0., -11.2, 1e5 - 25.),
                     Tup::zeros(),
-                    Tup(0.25, 0.75, 0.75),
+                    Tup(0.75, 0.75, 0.75), //Tup(0.25, 0.75, 0.75),
                     RflType::DIFF,
                 ), // Back
                 Sphere::new(
                     1e5,
                     Tup(0., -11.2, -1e5 + 170. - 25.),
                     Tup::zeros(),
-                    Tup(0.75, 0.75, 0.25),
+                    Tup::zeros(), //Tup(0.75, 0.75, 0.25),
                     RflType::DIFF,
                 ), // Front
                 Sphere::new(
@@ -63,13 +63,6 @@ impl World {
                     Tup(1., 1., 1.) * 0.999,
                     RflType::SPEC,
                 ), // Mirror
-                // Sphere::new(
-                //     12.5,
-                //     Tup(0., -10., 60.),
-                //     Tup::zeros(),
-                //     Tup(1., 1., 1.) * 0.999,
-                //     RflType::SPEC,
-                // ), // Mirror
                 Sphere::new(
                     16.5,
                     Tup(23., -35.5, 78. - 25.),
@@ -77,13 +70,6 @@ impl World {
                     Tup(1., 1., 1.) * 0.999,
                     RflType::REFR,
                 ), // Glass
-                // Sphere::new(
-                //     12.,
-                //     Tup(0., 0., 0.),
-                //     Tup::zeros(),
-                //     Tup(1., 1., 1.) * 0.999,
-                //     RflType::REFR,
-                // ), // BH
                 Sphere::new(
                     600.,
                     Tup(0., 629.6 - 0.27, 81.6 - 25.),
@@ -115,13 +101,12 @@ impl World {
         test_color: &mut bool,
     ) -> bool {
         *t = f64::INFINITY;
-        let max_iter = 400.0;
-        let mut step_size: f64 = 5.;
-        let sigma = 1e-8;
+        let max_iter = 200.0;
+        let mut step_size: f64 = 50.;
+        let sigma = 1e-1;
 
         // Testing
-        let s: Tup = Tup(0., -11.2, 50.);
-        let rs: f64 = 5.;
+        let metric = Metric::new(2.5, Tup(0., -11.2, 65.));
 
         *ray = Ray { o: ray.o, d: ray.d };
 
@@ -143,16 +128,15 @@ impl World {
             }
 
             if !hit {
-                *ray = schwarzschild(ray, step_size);
+                *ray = metric.schwarzschild(ray, step_size);
 
-                // if ray.o.1.abs() < 0.1 && ray.o.len() > 5. && ray.o.len() < 10. {
-                //     *test_color = true;
-                //     return true;
-                // }
+                let ray_t = ray.o - metric.s;
 
-                // if (ray.o - s).len() < rs {
-                //     return false;
-                // }
+                if ray_t.1.abs() < 0.1 && ray_t.len() > 10. && ray_t.len() < 20. {
+                    *test_color = true;
+                    return true;
+                }
+
                 step_size = (step_size * 1.05).min(1.0);
             }
         }
