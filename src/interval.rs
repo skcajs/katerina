@@ -6,11 +6,10 @@ use super::tup::Tup;
 // const RS: f64 = 2. * G * M;
 // const RS: f64 = 1.6;
 
-// const S: Tup = Tup(23., -35.5, 78. - 25.);
 //122.8
 
 const RS: f64 = 5.;
-const S: Tup = Tup(0., -10., 60.);
+const S: Tup = Tup(0., -11.2, 50.);
 // const S: Tup = Tup(0., 0., 0.);
 
 #[allow(dead_code)]
@@ -24,7 +23,7 @@ pub fn minkowski(ray: &Ray, h: f64) -> Ray {
 }
 
 pub fn schwarzschild(ray: &Ray, h: f64) -> Ray {
-    let previous_x = ray.o;
+    let previous_x = ray.o - S;
     let previous_p = ray.d;
 
     let k1x = fx(previous_p, previous_x);
@@ -43,13 +42,13 @@ pub fn schwarzschild(ray: &Ray, h: f64) -> Ray {
     let current_momentum = previous_p + ((k1p + k2p * 2. + k3p * 2. + k4p) * (h / 6.));
 
     Ray {
-        o: current_point,
+        o: current_point + S,
         d: current_momentum.norm(),
     }
 }
 
 pub fn fx(p: Tup, x: Tup) -> Tup {
-    let r: f64 = (x - S).len();
+    let r: f64 = x.len();
     // let r_adjusted = r * (1. + (RS / (4. * r))).powi(2);
     let a: f64 = 1. + (RS / (4. * r));
     let b: f64 = 1. - (RS / (4. * r));
@@ -58,7 +57,7 @@ pub fn fx(p: Tup, x: Tup) -> Tup {
 }
 
 pub fn fp(p: Tup, x: Tup) -> Tup {
-    let r: f64 = (x - S).len();
+    let r: f64 = x.len();
     // let r_adjusted = r * (1. + (RS / (4. * r))).powi(2);
     let a: f64 = 1. + (RS / (4. * r));
     let b: f64 = 1. - (RS / (4. * r));
@@ -100,8 +99,8 @@ mod tests {
         let camera_position = Tup(0., 0., -10.);
         let num_rays = 100;
         // let ray_range = 10.;
-        let h = 0.5;
-        let steps = 2000;
+        let h = 5.;
+        let steps = 200;
 
         let mut output = File::create("ray_paths.csv").expect("Unable to create file");
 
@@ -121,7 +120,7 @@ mod tests {
             let mut current_ray = ray;
 
             for _ in 0..steps {
-                current_ray = euler(&current_ray, h);
+                current_ray = schwarzschild(&current_ray, h);
                 path.push(current_ray.o);
             }
 
