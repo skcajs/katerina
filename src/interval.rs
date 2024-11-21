@@ -49,18 +49,17 @@ impl Metric {
 
     fn fx(&self, p: Tup, x: Tup) -> Tup {
         let r: f64 = x.len();
-        let r_adjusted = r * (1. + (self.rs / (4. * r))).powi(2);
-        let a: f64 = 1. + (self.rs / (4. * r_adjusted));
-        let b: f64 = 1. - (self.rs / (4. * r_adjusted));
+        let a: f64 = 1. + (self.rs / (4. * r));
+        let b: f64 = 1. - (self.rs / (4. * r));
         let fact_x: f64 = (b * b) / a.powi(6);
         p * fact_x
     }
 
     fn fp(&self, p: Tup, x: Tup) -> Tup {
         let r: f64 = x.len();
-        let r_adjusted = r * (1. + (self.rs / (4. * r))).powi(2);
-        let a: f64 = 1. + (self.rs / (4. * r_adjusted));
-        let b: f64 = 1. - (self.rs / (4. * r_adjusted));
+        let r_adjusted = r * (1. + (self.rs / (4. * r))).powi(3);
+        let a: f64 = 1. + (self.rs / (4. * r));
+        let b: f64 = 1. - (self.rs / (4. * r));
         let fact_p1: f64 = (b * b) / a.powi(7);
         let fact_p2: f64 = 1.0 / (b * a);
         x * (-1. / (2. * r_adjusted.powi(3)))

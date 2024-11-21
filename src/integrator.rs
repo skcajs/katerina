@@ -30,103 +30,6 @@ pub fn integrate(
     }
 }
 
-#[recursive]
-pub fn radiance(world: &World, mut ray: Ray, mut depth: i32, mut sampler: &mut Sampler) -> Tup {
-    let mut t = f64::INFINITY;
-    let mut id: usize = 0;
-    let mut test_color = false;
-    if !world.trace_geodesic(&mut ray, &mut t, &mut id, &mut test_color) {
-        return Tup(0., 0., 0.);
-    }
-    if test_color {
-        return Tup(0.8, 0., 0.8);
-    }
-    let obj: &Sphere = &world.spheres[id];
-    let x = ray.o + (ray.d * t); // I think this should be the current point from the trace_geodesic.
-    let n = (x - obj.p).norm();
-    let n1 = if n.dot(ray.d) < 0.0 { n } else { n * -1.0 };
-
-    let mut f = obj.c;
-    let p = f.0.max(f.1.max(f.2));
-    depth += 1;
-    if depth > 5 {
-        if sampler.next() < p {
-            f = f * (1.0 / p);
-        } else {
-            return obj.e;
-        }
-    }
-
-    match obj.rfl {
-        RflType::DIFF => {
-            let r1 = 2. * PI * sampler.next();
-            let r2: f64 = sampler.next();
-            let r2s = r2.sqrt();
-            let w: Tup = n1;
-            let u: Tup = if w.0.abs() > 0.1 {
-                Tup(0., 1., 0.).cross(w).norm()
-            } else {
-                Tup(1., 0., 0.).cross(w).norm()
-            };
-
-            let v = w.cross(u);
-            let d: Tup =
-                (u * f64::cos(r1) * r2s + v * f64::sin(r1) * r2s + w * ((1. - r2).sqrt())).norm();
-            return obj.e + f * radiance(world, Ray { o: x, d }, depth, &mut sampler);
-        }
-        RflType::SPEC => {
-            return obj.e
-                + f * radiance(
-                    world,
-                    Ray {
-                        o: x,
-                        d: ray.d - n * 2. * n.dot(ray.d),
-                    },
-                    depth,
-                    &mut sampler,
-                );
-        }
-        RflType::REFR => {
-            let rfl_ray = Ray {
-                o: x,
-                d: ray.d - n * 2. * n.dot(ray.d),
-            };
-            let into = n.dot(n1) > 0.;
-            let nc: f64 = 1.;
-            let nt: f64 = 1.5;
-            let nnt = if into { nc / nt } else { nt / nc };
-            let ddn = ray.d.dot(n1);
-            let cos2t = 1. - nnt * nnt * (1. - ddn * ddn);
-            if cos2t < 0. {
-                return obj.e + f * radiance(world, rfl_ray, depth, &mut sampler);
-            }
-            let tdir =
-                (ray.d * nnt - n * if into { 1. } else { -1. } * (ddn * nnt + cos2t.sqrt())).norm();
-            let a = nt - nc;
-            let b = nt + nc;
-            let r0 = a * a / (b * b);
-            let c = 1. - if into { -ddn } else { tdir.dot(n) };
-            let re = r0 + (1. - r0) * c * c * c * c * c;
-            let tr = 1. - re;
-            let p = 0.25 + 0.5 * re;
-            let rp = re / p;
-            let tp = tr / (1. - p);
-
-            obj.e
-                + f * (if depth > 2 {
-                    if sampler.next() < p {
-                        radiance(world, rfl_ray, depth, &mut sampler) * rp
-                    } else {
-                        radiance(world, Ray { o: x, d: tdir }, depth, &mut sampler) * tp
-                    }
-                } else {
-                    radiance(world, rfl_ray, depth, &mut sampler) * re
-                        + radiance(world, Ray { o: x, d: tdir }, depth, &mut sampler) * tr
-                })
-        }
-    }
-}
-
 pub fn radiance_iter(world: &World, initial_ray: Ray, depth: i32, sampler: &mut Sampler) -> Tup {
     let mut result = Tup::zeros();
     let throughput = Tup::ones();
@@ -143,10 +46,10 @@ pub fn radiance_iter(world: &World, initial_ray: Ray, depth: i32, sampler: &mut 
                 break;
             }
 
-            if test_color {
-                result += Tup(0.8, 0., 0.8) * throughput;
-                break;
-            }
+            // if test_color {
+            //     result += Tup(0.8, 0., 0.8) * throughput;
+            //     break;
+            // }
 
             let obj: &Sphere = &world.spheres[id];
             let x = ray.o + (ray.d * t);
@@ -255,6 +158,103 @@ pub fn radiance_iter(world: &World, initial_ray: Ray, depth: i32, sampler: &mut 
         }
     }
     result
+}
+
+#[recursive]
+pub fn radiance(world: &World, mut ray: Ray, mut depth: i32, mut sampler: &mut Sampler) -> Tup {
+    let mut t = f64::INFINITY;
+    let mut id: usize = 0;
+    let mut test_color = false;
+    if !world.trace_geodesic(&mut ray, &mut t, &mut id, &mut test_color) {
+        return Tup(0., 0., 0.);
+    }
+    if test_color {
+        return Tup(0.8, 0., 0.8);
+    }
+    let obj: &Sphere = &world.spheres[id];
+    let x = ray.o + (ray.d * t); // I think this should be the current point from the trace_geodesic.
+    let n = (x - obj.p).norm();
+    let n1 = if n.dot(ray.d) < 0.0 { n } else { n * -1.0 };
+
+    let mut f = obj.c;
+    let p = f.0.max(f.1.max(f.2));
+    depth += 1;
+    if depth > 5 {
+        if sampler.next() < p {
+            f = f * (1.0 / p);
+        } else {
+            return obj.e;
+        }
+    }
+
+    match obj.rfl {
+        RflType::DIFF => {
+            let r1 = 2. * PI * sampler.next();
+            let r2: f64 = sampler.next();
+            let r2s = r2.sqrt();
+            let w: Tup = n1;
+            let u: Tup = if w.0.abs() > 0.1 {
+                Tup(0., 1., 0.).cross(w).norm()
+            } else {
+                Tup(1., 0., 0.).cross(w).norm()
+            };
+
+            let v = w.cross(u);
+            let d: Tup =
+                (u * f64::cos(r1) * r2s + v * f64::sin(r1) * r2s + w * ((1. - r2).sqrt())).norm();
+            return obj.e + f * radiance(world, Ray { o: x, d }, depth, &mut sampler);
+        }
+        RflType::SPEC => {
+            return obj.e
+                + f * radiance(
+                    world,
+                    Ray {
+                        o: x,
+                        d: ray.d - n * 2. * n.dot(ray.d),
+                    },
+                    depth,
+                    &mut sampler,
+                );
+        }
+        RflType::REFR => {
+            let rfl_ray = Ray {
+                o: x,
+                d: ray.d - n * 2. * n.dot(ray.d),
+            };
+            let into = n.dot(n1) > 0.;
+            let nc: f64 = 1.;
+            let nt: f64 = 1.5;
+            let nnt = if into { nc / nt } else { nt / nc };
+            let ddn = ray.d.dot(n1);
+            let cos2t = 1. - nnt * nnt * (1. - ddn * ddn);
+            if cos2t < 0. {
+                return obj.e + f * radiance(world, rfl_ray, depth, &mut sampler);
+            }
+            let tdir =
+                (ray.d * nnt - n * if into { 1. } else { -1. } * (ddn * nnt + cos2t.sqrt())).norm();
+            let a = nt - nc;
+            let b = nt + nc;
+            let r0 = a * a / (b * b);
+            let c = 1. - if into { -ddn } else { tdir.dot(n) };
+            let re = r0 + (1. - r0) * c * c * c * c * c;
+            let tr = 1. - re;
+            let p = 0.25 + 0.5 * re;
+            let rp = re / p;
+            let tp = tr / (1. - p);
+
+            obj.e
+                + f * (if depth > 2 {
+                    if sampler.next() < p {
+                        radiance(world, rfl_ray, depth, &mut sampler) * rp
+                    } else {
+                        radiance(world, Ray { o: x, d: tdir }, depth, &mut sampler) * tp
+                    }
+                } else {
+                    radiance(world, rfl_ray, depth, &mut sampler) * re
+                        + radiance(world, Ray { o: x, d: tdir }, depth, &mut sampler) * tr
+                })
+        }
+    }
 }
 
 #[cfg(test)]

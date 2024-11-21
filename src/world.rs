@@ -101,8 +101,8 @@ impl World {
         test_color: &mut bool,
     ) -> bool {
         *t = f64::INFINITY;
-        let max_iter = 500.0;
-        let mut step_size: f64 = 5.;
+        let max_iter = 300.0;
+        let mut step_size: f64 = 20.;
         let sigma = 1e-1;
 
         // Testing
@@ -130,16 +130,16 @@ impl World {
             if !hit {
                 *ray = metric.schwarzschild(ray, step_size);
 
-                let ray_t = ray.o - metric.s;
+                // let ray_t = ray.o - metric.s;
 
                 // if metric.rs > 0. && ray_t.1.abs() < 0.1 && ray_t.len() > 10. && ray_t.len() < 30. {
                 //     *test_color = true;
                 //     return true;
                 // }
 
-                if ray_t.len() <= metric.rs {
-                    return false;
-                }
+                // if ray_t.len() <= metric.rs {
+                //     return false;
+                // }
 
                 step_size = (step_size * 1.05).min(1.0);
             }
