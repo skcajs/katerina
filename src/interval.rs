@@ -49,21 +49,21 @@ impl Metric {
 
     fn fx(&self, p: Tup, x: Tup) -> Tup {
         let r: f64 = x.len();
-        // let r_adjusted = r * (1. + (RS / (4. * r))).powi(2);
-        let a: f64 = 1. + (self.rs / (4. * r));
-        let b: f64 = 1. - (self.rs / (4. * r));
+        let r_adjusted = r * (1. + (self.rs / (4. * r))).powi(2);
+        let a: f64 = 1. + (self.rs / (4. * r_adjusted));
+        let b: f64 = 1. - (self.rs / (4. * r_adjusted));
         let fact_x: f64 = (b * b) / a.powi(6);
         p * fact_x
     }
 
     fn fp(&self, p: Tup, x: Tup) -> Tup {
         let r: f64 = x.len();
-        // let r_adjusted = r * (1. + (RS / (4. * r))).powi(2);
-        let a: f64 = 1. + (self.rs / (4. * r));
-        let b: f64 = 1. - (self.rs / (4. * r));
+        let r_adjusted = r * (1. + (self.rs / (4. * r))).powi(2);
+        let a: f64 = 1. + (self.rs / (4. * r_adjusted));
+        let b: f64 = 1. - (self.rs / (4. * r_adjusted));
         let fact_p1: f64 = (b * b) / a.powi(7);
         let fact_p2: f64 = 1.0 / (b * a);
-        x * (-1. / (2. * r.powi(3)))
+        x * (-1. / (2. * r_adjusted.powi(3)))
             * (((p.0.powi(2) + p.1.powi(2) + p.2.powi(2)) * fact_p1) + fact_p2)
             * self.rs
     }
@@ -106,7 +106,7 @@ mod tests {
 
         let mut output = File::create("ray_paths.csv").expect("Unable to create file");
 
-        let metric = Metric::new(2.5, Tup(0., -11.2, 65.));
+        let metric = Metric::new(5., Tup(0., 0., 0.));
 
         for i in 0..num_rays {
             let theta = i as f64 * PI / (num_rays as f64 - 1.0);
@@ -148,7 +148,7 @@ mod tests {
 
         let mut output = File::create("ray_paths.csv").expect("Unable to create file");
 
-        let metric = Metric::new(2.5, Tup(0., 0., 0.));
+        let metric = Metric::new(5., Tup(0., 0., 0.));
 
         for i in 0..num_rays {
             // calculate x from -15 to 15 in equal spaces

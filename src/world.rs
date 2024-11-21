@@ -101,12 +101,12 @@ impl World {
         test_color: &mut bool,
     ) -> bool {
         *t = f64::INFINITY;
-        let max_iter = 200.0;
-        let mut step_size: f64 = 50.;
+        let max_iter = 250.0;
+        let mut step_size: f64 = 20.;
         let sigma = 1e-1;
 
         // Testing
-        let metric = Metric::new(2.5, Tup(0., -11.2, 65.));
+        let metric = Metric::new(2.5, Tup(0., -11.2, 50.));
 
         *ray = Ray { o: ray.o, d: ray.d };
 
@@ -132,9 +132,13 @@ impl World {
 
                 let ray_t = ray.o - metric.s;
 
-                if ray_t.1.abs() < 0.1 && ray_t.len() > 10. && ray_t.len() < 20. {
+                if metric.rs > 0. && ray_t.1.abs() < 0.1 && ray_t.len() > 10. && ray_t.len() < 30. {
                     *test_color = true;
                     return true;
+                }
+
+                if ray_t.len() <= metric.rs {
+                    return false;
                 }
 
                 step_size = (step_size * 1.05).min(1.0);
