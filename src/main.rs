@@ -39,7 +39,7 @@ fn to_int(x: f64) -> i32 {
 fn main() {
     let w = 640;
     let h = 480;
-    let num_samples: isize = 25; // will be evaluated to num_samples * 4
+    let num_samples: isize = 15; // will be evaluated to num_samples * 4
     let cam = Ray {
         o: Tup(50. - 50., 52. - 52., 295.6 - 25.),
         d: Tup(0., -0.046, -1.).norm(),
@@ -57,9 +57,12 @@ fn main() {
     let world = World::new();
 
     let now = Instant::now();
-
-    // print the time now
-    println!("Start time: {:?}", now);
+    // print the time now in hours and minutes
+    println!(
+        "Started rendering at {}:{}",
+        now.elapsed().as_secs() / 3600,
+        (now.elapsed().as_secs() / 60) % 60
+    );
 
     let progress_counter = AtomicUsize::new(0);
     let total_pixels = h * w;
