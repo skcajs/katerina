@@ -9,7 +9,7 @@ pub struct Metric {
 
 impl Metric {
     pub fn new(rs: f64, s: Tup) -> Self {
-        Metric { rs, s }
+        Metric { rs: rs * 0.6, s } // applying a scale factor to the Schwarzschild radius
     }
 
     #[allow(dead_code)]
@@ -22,21 +22,14 @@ impl Metric {
         }
     }
 
-    pub fn schwarzschild(&self, ray: &Ray, h: f64) -> Ray {
+    pub fn rk4(&self, ray: &Ray, h: f64) -> Ray {
         let previous_x = ray.o - self.s;
         let previous_p = ray.d;
 
-        let k1x = self.fx(previous_p, previous_x);
-        let k1p = self.fp(previous_p, previous_x);
-
-        let k2x = self.fx(previous_p + k1p * 0.5 * h, previous_x + k1x * 0.5 * h);
-        let k2p = self.fp(previous_p + k1p * 0.5 * h, previous_x + k1x * 0.5 * h);
-
-        let k3x = self.fx(previous_p + k2p * 0.5 * h, previous_x + k2x * 0.5 * h);
-        let k3p = self.fp(previous_p + k2p * 0.5 * h, previous_x + k2x * 0.5 * h);
-
-        let k4x = self.fx(previous_p + k3p * h, previous_x + k3x * h);
-        let k4p = self.fp(previous_p + k3p * h, previous_x + k3x * h);
+        let (k1x, k1p) = self.schwarzschild(previous_p, previous_x);
+        let (k2x, k2p) = self.schwarzschild(previous_p + k1p * 0.5 * h, previous_x + k1x * 0.5 * h);
+        let (k3x, k3p) = self.schwarzschild(previous_p + k2p * 0.5 * h, previous_x + k2x * 0.5 * h);
+        let (k4x, k4p) = self.schwarzschild(previous_p + k3p * h, previous_x + k3x * h);
 
         let current_point = previous_x + ((k1x + k2x * 2. + k3x * 2. + k4x) * (h / 6.));
         let current_momentum = previous_p + ((k1p + k2p * 2. + k3p * 2. + k4p) * (h / 6.));
@@ -45,26 +38,6 @@ impl Metric {
             o: current_point + self.s,
             d: current_momentum.norm(),
         }
-    }
-
-    fn fx(&self, p: Tup, x: Tup) -> Tup {
-        let r: f64 = x.len();
-        let a: f64 = 1. + (self.rs / (4. * r));
-        let b: f64 = 1. - (self.rs / (4. * r));
-        let fact_x: f64 = (b * b) / a.powi(6);
-        p * fact_x
-    }
-
-    fn fp(&self, p: Tup, x: Tup) -> Tup {
-        let r: f64 = x.len();
-        let r_adjusted = r * (1. + (self.rs / (4. * r))).powi(3);
-        let a: f64 = 1. + (self.rs / (4. * r));
-        let b: f64 = 1. - (self.rs / (4. * r));
-        let fact_p1: f64 = (b * b) / a.powi(7);
-        let fact_p2: f64 = 1.0 / (b * a);
-        x * (-1. / (2. * r_adjusted.powi(3)))
-            * (((p.0.powi(2) + p.1.powi(2) + p.2.powi(2)) * fact_p1) + fact_p2)
-            * self.rs
     }
 
     #[allow(dead_code)]
@@ -87,6 +60,29 @@ impl Metric {
             o: new_pos,
             d: new_dir,
         }
+    }
+
+    fn schwarzschild(&self, p: Tup, x: Tup) -> (Tup, Tup) {
+        let r: f64 = x.len();
+        if r < self.rs / 4. {
+            return (p, x);
+        }
+        let r_adjusted = r * (1. + (self.rs / (4. * r))).powi(2);
+        let a: f64 = 1. + (self.rs / (4. * r));
+        let b: f64 = 1. - (self.rs / (4. * r));
+        let fact_x: f64 = (b * b) / a.powi(6);
+        let fact_p1: f64 = (b * b) / a.powi(7);
+        let fact_p2: f64 = 1.0 / (b * a);
+        (
+            p * fact_x,
+            x * (-1. / (2. * r_adjusted.powi(3)))
+                * (((p.0.powi(2) + p.1.powi(2) + p.2.powi(2)) * fact_p1) + fact_p2)
+                * self.rs,
+        )
+    }
+
+    pub fn transform_point(&self, point: Tup) -> Tup {
+        point
     }
 }
 
@@ -123,7 +119,7 @@ mod tests {
             let mut current_ray = ray;
 
             for _ in 0..steps {
-                current_ray = metric.schwarzschild(&current_ray, h);
+                current_ray = metric.rk4(&current_ray, h);
                 path.push(current_ray.o);
             }
 

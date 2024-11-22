@@ -47,7 +47,7 @@ impl Sphere {
         0.0
     }
 
-    fn is_emitter(&self) -> bool {
+    pub fn is_emitter(&self) -> bool {
         self.e.0 > 0.0 || self.e.1 > 0.0 || self.e.2 > 0.0
     }
 }

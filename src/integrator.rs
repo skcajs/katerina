@@ -40,13 +40,13 @@ pub fn radiance_iter(world: &World, initial_ray: Ray, depth: i32, sampler: &mut 
         loop {
             let mut t = f64::INFINITY;
             let mut id: usize = 0;
-            let mut test_color = false;
+            let mut accretion_disk = false;
 
-            if !world.trace_geodesic(&mut ray, &mut t, &mut id, &mut test_color) {
+            if !world.trace_geodesic(&mut ray, &mut t, &mut id, &mut accretion_disk) {
                 break;
             }
 
-            // if test_color {
+            // if accretion_disk {
             //     result += Tup(0.8, 0., 0.8) * throughput;
             //     break;
             // }
@@ -88,6 +88,42 @@ pub fn radiance_iter(world: &World, initial_ray: Ray, depth: i32, sampler: &mut 
                         (u * f64::cos(r1) * r2s + v * f64::sin(r1) * r2s + w * ((1. - r2).sqrt()))
                             .norm();
 
+                    // // Loop over lights for direct lighting
+                    // let mut e = Tup::zeros();
+                    // for (i, sphere) in world.spheres.iter().enumerate() {
+                    //     if !sphere.is_emitter() {
+                    //         continue; // Skip non-emissive objects
+                    //     }
+
+                    //     // Calculate direction to light
+                    //     let sw = (sphere.p - x).norm();
+                    //     let su = if sw.0.abs() > 0.1 {
+                    //         Tup(0., 1., 0.).cross(sw).norm()
+                    //     } else {
+                    //         Tup(1., 0., 0.).cross(sw).norm()
+                    //     };
+                    //     let sv = sw.cross(su);
+
+                    //     let light_sample_r1 = sampler.next();
+                    //     let light_sample_r2 = sampler.next();
+                    //     let light_sample_r2s = light_sample_r2.sqrt();
+                    //     let light_dir =
+                    //         (su * f64::cos(2. * PI * light_sample_r1) * light_sample_r2s
+                    //             + sv * f64::sin(2. * PI * light_sample_r1) * light_sample_r2s
+                    //             + sw * (1. - light_sample_r2).sqrt())
+                    //         .norm();
+
+                    //     // Check for occlusion
+                    //     let light_ray = Ray { o: x, d: light_dir };
+                    //     let mut t = f64::INFINITY;
+                    //     let mut id: usize = 0;
+                    //     if world.intersect(&light_ray, &mut t, &mut id) && id == i {
+                    //         let omega = 2. * PI * (1. - light_sample_r2s);
+                    //         e += throughput * sphere.e * f64::max(0., light_dir.dot(n1)) * omega;
+                    //     }
+                    // }
+
+                    // result += e;
                     ray = Ray { o: x, d };
                 }
                 RflType::SPEC => {
