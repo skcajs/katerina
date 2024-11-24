@@ -70,10 +70,17 @@ impl World {
                     Tup(1., 1., 1.) * 0.999,
                     RflType::REFR,
                 ), // Glass
+                // Sphere::new(
+                //     600.,
+                //     Tup(0., 629.6 - 0.27, 81.6 - 25.),
+                //     Tup(12., 12., 12.),
+                //     Tup::zeros(),
+                //     RflType::DIFF,
+                // ), // Light
                 Sphere::new(
-                    600.,
-                    Tup(0., 629.6 - 0.27, 81.6 - 25.),
-                    Tup(12., 12., 12.),
+                    1.5,
+                    Tup(0., 20., 56.6),
+                    Tup(4., 4., 4.) * 100.,
                     Tup::zeros(),
                     RflType::DIFF,
                 ), // Light
@@ -99,15 +106,13 @@ impl World {
         t: &mut f64,
         id: &mut usize,
         accretion_disk: &mut bool,
+        metric: &Metric,
     ) -> bool {
         *t = f64::INFINITY;
         let max_iter = 300.0;
-        let mut step_size: f64 = 20.;
+        let initial_step_size = 10.;
+        let mut step_size: f64 = initial_step_size;
         let sigma = 1e-1;
-
-        // Testing
-        // let metric = Metric::new(5., Tup(-1., -13.2, 60.));
-        let metric = Metric::new(1.6, Tup(23., -35.5, 78. - 25.));
 
         *ray = Ray { o: ray.o, d: ray.d };
 
@@ -138,7 +143,7 @@ impl World {
                 //     return true;
                 // }
 
-                step_size = (step_size * 1.05).min(1.0);
+                step_size = (step_size * 1.05).min(initial_step_size * 2.);
             }
         }
 

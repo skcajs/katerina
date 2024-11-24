@@ -33,7 +33,7 @@ impl Tup {
     }
 
     #[allow(dead_code)]
-    pub fn to_cartesian(self) -> Self {
+    pub fn spherical_to_cartesian(self) -> Self {
         // r = self.0, theta = self.1, phi = self.2
         Tup(
             self.0 * f64::sin(self.1) * f64::cos(self.2),
@@ -43,11 +43,21 @@ impl Tup {
     }
 
     #[allow(dead_code)]
-    pub fn to_spherical(self) -> Self {
+    pub fn cartesian_to_spherical(self) -> Self {
         // x = self.0, y = self.1, z = self.2
         let r = self.len();
         let theta = f64::acos(self.2 / r);
         let phi = f64::atan2(self.1, self.0);
+        Tup(r, theta, phi)
+    }
+
+    #[allow(dead_code)]
+    pub fn cartesian_to_boyer_lindquist(self, a: f64) -> Self {
+        let Tup(x, y, z) = self;
+        let w = (x * x + y * y + z * z) - a * a;
+        let r = (0.5 * (w + ((w * w) + (4. * (a * a) * (z * z))).sqrt())).sqrt();
+        let theta = f64::acos(z / r);
+        let phi = f64::atan2(y, x);
         Tup(r, theta, phi)
     }
 }

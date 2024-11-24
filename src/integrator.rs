@@ -2,6 +2,7 @@ use recursive::recursive;
 use std::f64::consts::PI;
 
 use crate::{
+    interval::Metric,
     ray::Ray,
     sampler::Sampler,
     sphere::{RflType, Sphere},
@@ -26,11 +27,13 @@ pub fn integrate(
 ) -> Tup {
     match int_type {
         IntegrationType::Iterative => radiance_iter(world, ray, depth, sampler),
-        IntegrationType::Recursive => radiance(world, ray, depth, sampler),
+        IntegrationType::Recursive => radiance(world, ray, depth, sampler, 1.),
     }
 }
 
 pub fn radiance_iter(world: &World, initial_ray: Ray, depth: i32, sampler: &mut Sampler) -> Tup {
+    // let metric = Metric::new(1.6, Tup(23., -35.5, 78. - 25.));
+    let metric = Metric::new(5., Tup(-1., -13.2, 60.));
     let mut result = Tup::zeros();
     let throughput = Tup::ones();
     let mut stack = Vec::new(); // Stack to handle rays iteratively
@@ -42,7 +45,7 @@ pub fn radiance_iter(world: &World, initial_ray: Ray, depth: i32, sampler: &mut 
             let mut id: usize = 0;
             let mut accretion_disk = false;
 
-            if !world.trace_geodesic(&mut ray, &mut t, &mut id, &mut accretion_disk) {
+            if !world.trace_geodesic(&mut ray, &mut t, &mut id, &mut accretion_disk, &metric) {
                 break;
             }
 
@@ -87,43 +90,6 @@ pub fn radiance_iter(world: &World, initial_ray: Ray, depth: i32, sampler: &mut 
                     let d: Tup =
                         (u * f64::cos(r1) * r2s + v * f64::sin(r1) * r2s + w * ((1. - r2).sqrt()))
                             .norm();
-
-                    // // Loop over lights for direct lighting
-                    // let mut e = Tup::zeros();
-                    // for (i, sphere) in world.spheres.iter().enumerate() {
-                    //     if !sphere.is_emitter() {
-                    //         continue; // Skip non-emissive objects
-                    //     }
-
-                    //     // Calculate direction to light
-                    //     let sw = (sphere.p - x).norm();
-                    //     let su = if sw.0.abs() > 0.1 {
-                    //         Tup(0., 1., 0.).cross(sw).norm()
-                    //     } else {
-                    //         Tup(1., 0., 0.).cross(sw).norm()
-                    //     };
-                    //     let sv = sw.cross(su);
-
-                    //     let light_sample_r1 = sampler.next();
-                    //     let light_sample_r2 = sampler.next();
-                    //     let light_sample_r2s = light_sample_r2.sqrt();
-                    //     let light_dir =
-                    //         (su * f64::cos(2. * PI * light_sample_r1) * light_sample_r2s
-                    //             + sv * f64::sin(2. * PI * light_sample_r1) * light_sample_r2s
-                    //             + sw * (1. - light_sample_r2).sqrt())
-                    //         .norm();
-
-                    //     // Check for occlusion
-                    //     let light_ray = Ray { o: x, d: light_dir };
-                    //     let mut t = f64::INFINITY;
-                    //     let mut id: usize = 0;
-                    //     if world.intersect(&light_ray, &mut t, &mut id) && id == i {
-                    //         let omega = 2. * PI * (1. - light_sample_r2s);
-                    //         e += throughput * sphere.e * f64::max(0., light_dir.dot(n1)) * omega;
-                    //     }
-                    // }
-
-                    // result += e;
                     ray = Ray { o: x, d };
                 }
                 RflType::SPEC => {
@@ -197,15 +163,19 @@ pub fn radiance_iter(world: &World, initial_ray: Ray, depth: i32, sampler: &mut 
 }
 
 #[recursive]
-pub fn radiance(world: &World, mut ray: Ray, mut depth: i32, mut sampler: &mut Sampler) -> Tup {
+pub fn radiance(
+    world: &World,
+    mut ray: Ray,
+    mut depth: i32,
+    mut sampler: &mut Sampler,
+    em: f64,
+) -> Tup {
+    // let metric = Metric::new(1.6, Tup(23., -35.5, 78. - 25.));
+    let metric = Metric::new(5., Tup(-1., -13.2, 60.));
     let mut t = f64::INFINITY;
     let mut id: usize = 0;
-    let mut test_color = false;
-    if !world.trace_geodesic(&mut ray, &mut t, &mut id, &mut test_color) {
-        return Tup(0., 0., 0.);
-    }
-    if test_color {
-        return Tup(0.8, 0., 0.8);
+    if !world.trace_geodesic(&mut ray, &mut t, &mut id, &mut false, &metric) {
+        return Tup::zeros();
     }
     let obj: &Sphere = &world.spheres[id];
     let x = ray.o + (ray.d * t); // I think this should be the current point from the trace_geodesic.
@@ -215,11 +185,11 @@ pub fn radiance(world: &World, mut ray: Ray, mut depth: i32, mut sampler: &mut S
     let mut f = obj.c;
     let p = f.0.max(f.1.max(f.2));
     depth += 1;
-    if depth > 5 {
+    if depth > 5 || !p.is_finite() {
         if sampler.next() < p {
             f = f * (1.0 / p);
         } else {
-            return obj.e;
+            return obj.e * em;
         }
     }
 
@@ -234,11 +204,53 @@ pub fn radiance(world: &World, mut ray: Ray, mut depth: i32, mut sampler: &mut S
             } else {
                 Tup(1., 0., 0.).cross(w).norm()
             };
-
             let v = w.cross(u);
+
             let d: Tup =
                 (u * f64::cos(r1) * r2s + v * f64::sin(r1) * r2s + w * ((1. - r2).sqrt())).norm();
-            return obj.e + f * radiance(world, Ray { o: x, d }, depth, &mut sampler);
+
+            // Loop over any lights
+            let mut e = Tup::zeros();
+            for (i, sphere) in world.spheres.iter().enumerate() {
+                if !sphere.is_emitter() {
+                    continue; // Skip non-emissive objects
+                }
+                let adjusted_sphere = metric.transform_point(sphere.p, x);
+                // Calculate direction to light
+                let sw = (adjusted_sphere - x).norm();
+                let su = if sw.0.abs() > 0.1 {
+                    Tup(0., 1., 0.).cross(sw).norm()
+                } else {
+                    Tup(1., 0., 0.).cross(sw).norm()
+                };
+                let sv = sw.cross(su);
+
+                let cos_a_max =
+                    (1. - sphere.r * sphere.r / (x - sphere.p).dot(x - sphere.p)).sqrt();
+
+                let eps1 = sampler.next();
+                let eps2 = sampler.next();
+                let cos_a = 1. - eps1 + eps1 * cos_a_max;
+                let sin_a = (1. - cos_a * cos_a).sqrt();
+                let phi = 2. * PI * eps2;
+                let l =
+                    (su * f64::cos(phi) * sin_a + sv * f64::sin(phi) * sin_a + sw * cos_a).norm();
+                if world.trace_geodesic(
+                    &mut Ray { o: x, d: l },
+                    &mut t,
+                    &mut id,
+                    &mut false,
+                    &metric,
+                ) && id == i
+                {
+                    let omega = 2. * PI * (1. - cos_a_max);
+                    e += f * sphere.e * f64::max(0., l.dot(n1)) * omega * (1. / PI);
+                }
+            }
+
+            return obj.e * em
+                + e
+                + (f * radiance(world, Ray { o: x, d }, depth, &mut sampler, 0.));
         }
         RflType::SPEC => {
             return obj.e
@@ -250,6 +262,7 @@ pub fn radiance(world: &World, mut ray: Ray, mut depth: i32, mut sampler: &mut S
                     },
                     depth,
                     &mut sampler,
+                    1.,
                 );
         }
         RflType::REFR => {
@@ -264,7 +277,7 @@ pub fn radiance(world: &World, mut ray: Ray, mut depth: i32, mut sampler: &mut S
             let ddn = ray.d.dot(n1);
             let cos2t = 1. - nnt * nnt * (1. - ddn * ddn);
             if cos2t < 0. {
-                return obj.e + f * radiance(world, rfl_ray, depth, &mut sampler);
+                return obj.e + f * radiance(world, rfl_ray, depth, &mut sampler, 1.);
             }
             let tdir =
                 (ray.d * nnt - n * if into { 1. } else { -1. } * (ddn * nnt + cos2t.sqrt())).norm();
@@ -281,13 +294,13 @@ pub fn radiance(world: &World, mut ray: Ray, mut depth: i32, mut sampler: &mut S
             obj.e
                 + f * (if depth > 2 {
                     if sampler.next() < p {
-                        radiance(world, rfl_ray, depth, &mut sampler) * rp
+                        radiance(world, rfl_ray, depth, &mut sampler, 1.) * rp
                     } else {
-                        radiance(world, Ray { o: x, d: tdir }, depth, &mut sampler) * tp
+                        radiance(world, Ray { o: x, d: tdir }, depth, &mut sampler, 1.) * tp
                     }
                 } else {
-                    radiance(world, rfl_ray, depth, &mut sampler) * re
-                        + radiance(world, Ray { o: x, d: tdir }, depth, &mut sampler) * tr
+                    radiance(world, rfl_ray, depth, &mut sampler, 1.) * re
+                        + radiance(world, Ray { o: x, d: tdir }, depth, &mut sampler, 1.) * tr
                 })
         }
     }
@@ -305,7 +318,7 @@ mod tests {
         let world = World { spheres: vec![] };
         let mut sampler = Sampler::new();
 
-        let result = radiance(&world, ray, 0, &mut sampler);
+        let result = radiance(&world, ray, 0, &mut sampler, 1.);
         assert_eq!(result, Tup(0., 0., 0.));
     }
 
@@ -327,7 +340,7 @@ mod tests {
         };
         let mut sampler = Sampler::new();
 
-        let result = radiance(&world, ray, 0, &mut sampler);
+        let result = radiance(&world, ray, 0, &mut sampler, 1.);
         assert_eq!(result, Tup(1., 0., 0.));
     }
 }
