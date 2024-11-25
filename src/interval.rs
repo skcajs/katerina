@@ -2,6 +2,8 @@ extern crate nalgebra as na;
 
 use na::Matrix3;
 
+use crate::geodesic::Geodesic;
+
 use super::ray::Ray;
 use super::tup::Tup;
 
@@ -27,84 +29,99 @@ impl Metric {
     }
 
     #[allow(dead_code)]
-    pub fn rkf45(&self, ray: &Ray, &mut h: &mut f64) -> Ray {
-        let previous_x = ray.o - self.s;
-        let previous_v = ray.d;
+    pub fn rkf45(&self, incoming: &Geodesic, h: &mut f64) -> Geodesic {
+        let mut abs_err = 1e10;
+        let tol = 1e-5;
+        let mut new_h = 0.0;
 
-        let mut h_u = h;
-        let mut abs_error = 1e10;
-        let sigma = 1e-6;
-
-        let incoming: Matrix3<f64> = Matrix3::new(
-            0.,
-            previous_x.0,
-            previous_x.1,
-            previous_x.2,
-            0.,
-            previous_v.0,
-            previous_v.1,
-            previous_v.2,
-            h_u,
+        let incoming_vals: Matrix3<f64> = Matrix3::new(
+            incoming.t,
+            incoming.r,
+            incoming.theta,
+            incoming.phi,
+            incoming.u0,
+            incoming.u1,
+            incoming.u2,
+            incoming.u3,
+            incoming.h_step,
         );
 
-        let mut y: Matrix3<f64> = Matrix3::zeros();
+        let a = incoming.a;
 
-        let max_iterations = 2;
-        let mut iterations = 0;
-        while abs_error > sigma && iterations < max_iterations {
-            iterations += 1;
-            let k1: Matrix3<f64> = self.derivatives(incoming);
-            let k2: Matrix3<f64> = self.derivatives(incoming + k1 * (h_u / 4.));
-            let k3: Matrix3<f64> =
-                self.derivatives(incoming + k1 * h_u * (3. / 32.) + k2 * h_u * (9. / 32.));
-            let k4: Matrix3<f64> = self.derivatives(
-                incoming + k1 * h_u * (1932. / 2197.) - k2 * h_u * (7200. / 2197.)
-                    + k3 * h_u * (7296. / 2197.),
+        let mut h_u = incoming_vals[8];
+
+        let mut new_y: Matrix3<f64> = Matrix3::zeros();
+
+        while abs_err > tol {
+            let k1: Matrix3<f64> = self.kerr(incoming_vals, a);
+            let k2: Matrix3<f64> = self.kerr(incoming_vals + (1.0 / 4.0) * k1 * h_u, a);
+            let k3: Matrix3<f64> = self.kerr(
+                incoming_vals + (3.0 / 32.0) * k1 * h_u + (9.0 / 32.0) * k2 * h_u,
+                a,
             );
-            let k5: Matrix3<f64> = self.derivatives(
-                incoming + k1 * h_u * (439. / 216.) - k2 * h_u * 8. + k3 * h_u * (3680. / 513.)
-                    - k4 * h_u * (845. / 4104.),
+            let k4: Matrix3<f64> = self.kerr(
+                incoming_vals + (1932.0 / 2197.0) * k1 * h_u - (7200.0 / 2197.0) * k2 * h_u
+                    + (7296.0 / 2197.0) * k3 * h_u,
+                a,
             );
-            let k6: Matrix3<f64> = self.derivatives(
-                incoming - k1 * h_u * (8. / 27.) + k2 * h_u * 2. - k3 * h_u * (3544. / 2565.)
-                    + k4 * h_u * (1859. / 4104.)
-                    - k5 * h_u * (11. / 40.),
+            let k5: Matrix3<f64> = self.kerr(
+                incoming_vals + (439.0 / 216.0) * k1 * h_u - 8.0 * k2 * h_u
+                    + (3680.0 / 513.0) * k3 * h_u
+                    - (845.0 / 4104.0) * k4 * h_u,
+                a,
             );
-
-            y = incoming
-                + (k1 * h_u * (16. / 135.)
-                    + k3 * h_u * (6656. / 12825.)
-                    + k4 * h_u * (28561. / 56430.)
-                    - k5 * h_u * (9. / 50.)
-                    + k6 * h_u * (2. / 55.));
-
-            let error: Matrix3<f64> =
-                k1 * h_u * (25. / 216.) + k3 * h_u * (1408. / 2565.) + k4 * h_u * (2197. / 4104.)
-                    - k5 * h_u * (1. / 5.);
-
-            abs_error = f64::sqrt(
-                error.m12.powi(2)
-                    + error.m13.powi(2)
-                    + error.m21.powi(2)
-                    + error.m23.powi(2)
-                    + error.m31.powi(2)
-                    + error.m32.powi(2),
+            let k6: Matrix3<f64> = self.kerr(
+                incoming_vals - (8.0 / 27.0) * k1 * h_u + 2.0 * k2 * h_u
+                    - (3544.0 / 2565.0) * k3 * h_u
+                    + (1859.0 / 4104.0) * k4 * h_u
+                    - (11.0 / 40.0) * k5 * h_u,
+                a,
             );
 
-            let new_h = h_u * (sigma / abs_error).powf(0.2);
+            new_y = incoming_vals
+                + (16.0 / 135.0) * k1 * h_u
+                + (6656.0 / 12825.0) * k3 * h_u
+                + (28561.0 / 56430.0) * k4 * h_u
+                - (9.0 / 50.0) * k5 * h_u
+                + (2.0 / 55.0) * k6 * h_u;
+            let error: Matrix3<f64> = (-1.0 / 360.0) * k1 * h_u
+                + (128.0 / 4275.0) * k3 * h_u
+                + (2197.0 / 75240.0) * k4 * h_u
+                - (1.0 / 50.0) * k5 * h_u
+                - (2.0 / 55.0) * k6 * h_u;
+            abs_err = f64::sqrt(
+                (error[0] * error[0])
+                    + (error[1] * error[1])
+                    + (error[2] * error[2])
+                    + (error[3] * error[3])
+                    + (error[4] * error[4])
+                    + (error[5] * error[5])
+                    + (error[6] * error[6])
+                    + (error[7] * error[7])
+                    + (error[8] * error[8]),
+            );
 
-            if abs_error > sigma {
+            new_h = 0.9 * h_u * (tol / abs_err).powf(1.0 / 5.0);
+
+            if abs_err > tol {
                 h_u = new_h;
             }
         }
 
-        let current_p = Tup(y.m12, y.m13, y.m21);
-        let current_v = Tup(y.m23, y.m31, y.m32).norm();
-
-        Ray {
-            o: current_p + self.s,
-            d: current_v,
-        }
+        let geodesic = Geodesic {
+            t: new_y[0],
+            r: new_y[1],
+            theta: new_y[2],
+            phi: new_y[3],
+            u0: new_y[4],
+            u1: new_y[5],
+            u2: new_y[6],
+            u3: new_y[7],
+            h_step: new_h,
+            dx: incoming.dx,
+            a,
+        };
+        return geodesic;
     }
 
     pub fn rk4(&self, ray: &Ray, h: f64) -> Ray {
@@ -148,28 +165,258 @@ impl Metric {
         }
     }
 
-    fn derivatives(&self, y: Matrix3<f64>) -> Matrix3<f64> {
-        let x = Tup(y.m12, y.m13, y.m21);
-        let r: f64 = x.len();
-        let p: Tup = Tup(y.m23, y.m31, y.m32);
-        if r < self.rs / 4. {
-            return Matrix3::new(0., y.m12, y.m13, y.m21, 0., y.m23, y.m31, y.m32, 0.);
-        }
-        let r_adjusted = r * (1. + (self.rs / (4. * r))).powi(2);
-        let a: f64 = 1. + (self.rs / (4. * r));
-        let b: f64 = 1. - (self.rs / (4. * r));
-        let fact_x: f64 = (b * b) / a.powi(6);
-        let fact_p1: f64 = (b * b) / a.powi(7);
-        let fact_p2: f64 = 1.0 / (b * a);
-        let p_new = p * fact_x;
-        let x_new = x
-            * (-1. / (2. * r_adjusted.powi(3)))
-            * (((p.0.powi(2) + p.1.powi(2) + p.2.powi(2)) * fact_p1) + fact_p2)
-            * self.rs;
+    fn kerr(&self, incoming_vals: Matrix3<f64>, a: f64) -> Matrix3<f64> {
+        let r = incoming_vals[1];
+        let theta = incoming_vals[2];
+        let u0 = incoming_vals[4];
+        let u1 = incoming_vals[5];
+        let u2 = incoming_vals[6];
+        let u3 = incoming_vals[7];
+        let r2 = r * r;
+        let r3 = r2 * r;
+        let r4 = r2 * r2;
+        let a2 = a * a;
+        let a3 = a2 * a;
+        let a4 = a2 * a2;
+        let cos_theta = f64::cos(theta);
+        let sin_theta = f64::sin(theta);
+        let cos_2_theta = cos_theta * cos_theta;
+        let sin_2_theta = sin_theta * sin_theta;
+        let sin_3_theta = sin_2_theta * sin_theta;
+        let s = a2 * cos_2_theta + r2;
+        let s2 = s * s;
 
-        Matrix3::new(
-            0., x_new.0, x_new.1, x_new.2, 0., p_new.0, p_new.1, p_new.2, 0.,
-        )
+        let u0_dot = -2.0
+            * u0
+            * u1
+            * (-a * r * (4.0 * a * r2 * sin_2_theta / s2 - 2.0 * a * sin_2_theta / s)
+                / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                    + a4 * cos_2_theta
+                    + a2 * r2 * cos_2_theta
+                    + a2 * r2
+                    + r4)
+                + 0.5
+                    * (-4.0 * r2 / s2 + 2.0 / s)
+                    * (-2.0 * a2 * r * sin_2_theta
+                        - a4 * cos_2_theta
+                        - a2 * r2 * cos_2_theta
+                        - a2 * r2
+                        - r4)
+                    / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                        + a4 * cos_2_theta
+                        + a2 * r2 * cos_2_theta
+                        + a2 * r2
+                        + r4))
+            - 2.0
+                * u0
+                * u2
+                * (2.0
+                    * a2
+                    * r
+                    * (-2.0 * a2 * r * sin_2_theta
+                        - a4 * cos_2_theta
+                        - a2 * r2 * cos_2_theta
+                        - a2 * r2
+                        - r4)
+                    * sin_theta
+                    * cos_theta
+                    / (s2
+                        * (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                            + a4 * cos_2_theta
+                            + a2 * r2 * cos_2_theta
+                            + a2 * r2
+                            + r4))
+                    - a * r
+                        * (-4.0 * a3 * r * sin_3_theta * cos_theta / s2
+                            - 4.0 * a * r * sin_theta * cos_theta / s)
+                        / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                            + a4 * cos_2_theta
+                            + a2 * r2 * cos_2_theta
+                            + a2 * r2
+                            + r4))
+            - 2.0
+                * u1
+                * u3
+                * (-a
+                    * r
+                    * (-4.0 * a2 * r2 * sin_2_theta / s2 + 2.0 * a2 * sin_2_theta / s + 2.0 * r)
+                    * sin_2_theta
+                    / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                        + a4 * cos_2_theta
+                        + a2 * r2 * cos_2_theta
+                        + a2 * r2
+                        + r4)
+                    + 0.5
+                        * (4.0 * a * r2 * sin_2_theta / s2 - 2.0 * a * sin_2_theta / s)
+                        * (-2.0 * a2 * r * sin_2_theta
+                            - a4 * cos_2_theta
+                            - a2 * r2 * cos_2_theta
+                            - a2 * r2
+                            - r4)
+                        / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                            + a4 * cos_2_theta
+                            + a2 * r2 * cos_2_theta
+                            + a2 * r2
+                            + r4))
+            - 2.0
+                * u2
+                * u3
+                * (-a
+                    * r
+                    * ((4.0 * a4 * r * sin_3_theta * cos_theta / s2
+                        + 4.0 * a2 * r * sin_theta * cos_theta / s)
+                        * sin_2_theta
+                        + 2.0
+                            * (2.0 * a2 * r * sin_2_theta / s + a2 + r2)
+                            * sin_theta
+                            * cos_theta)
+                    / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                        + a4 * cos_2_theta
+                        + a2 * r2 * cos_2_theta
+                        + a2 * r2
+                        + r4)
+                    + 0.5
+                        * (-4.0 * a3 * r * sin_3_theta * cos_theta / s2
+                            - 4.0 * a * r * sin_theta * cos_theta / s)
+                        * (-2.0 * a2 * r * sin_2_theta
+                            - a4 * cos_2_theta
+                            - a2 * r2 * cos_2_theta
+                            - a2 * r2
+                            - r4)
+                        / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                            + a4 * cos_2_theta
+                            + a2 * r2 * cos_2_theta
+                            + a2 * r2
+                            + r4));
+        let u1_dot = 2.0 * a2 * u1 * u2 * sin_theta * cos_theta / s
+            + r * u2 * u2 * (-2.0 * r + a2 + r2) / s
+            - 0.5 * u0 * u0 * (4.0 * r2 / s2 - 2.0 / s) * (-2.0 * r + a2 + r2) / s
+            - u0 * u3
+                * (-4.0 * a * r2 * sin_2_theta / s2 + 2.0 * a * sin_2_theta / s)
+                * (-2.0 * r + a2 + r2)
+                / s
+            - 0.5
+                * u1
+                * u1
+                * (2.0 * r / (-2.0 * r + a2 + r2)
+                    + (2.0 - 2.0 * r) * s / ((-2.0 * r + a2 + r2) * (-2.0 * r + a2 + r2)))
+                * (-2.0 * r + a2 + r2)
+                / s
+            + 0.5
+                * u3
+                * u3
+                * (-2.0 * r + a2 + r2)
+                * (-4.0 * a2 * r2 * sin_2_theta / s2 + 2.0 * a2 * sin_2_theta / s + 2.0 * r)
+                * sin_2_theta
+                / s;
+        let u2_dot = 2.0 * a2 * r * u0 * u0 * sin_theta * cos_theta / (s2 * s)
+            - a2 * u1 * u1 * sin_theta * cos_theta / ((s) * (-2.0 * r + a2 + r2))
+            + a2 * u2 * u2 * sin_theta * cos_theta / (s)
+            - 2.0 * r * u1 * u2 / (s)
+            - u0 * u3
+                * (4.0 * a3 * r * sin_3_theta * cos_theta / s2
+                    + 4.0 * a * r * sin_theta * cos_theta / (s))
+                / (s)
+            - 0.5
+                * u3
+                * u3
+                * (-(4.0 * a4 * r * sin_3_theta * cos_theta / s2
+                    + 4.0 * a2 * r * sin_theta * cos_theta / (s))
+                    * sin_2_theta
+                    - 2.0 * (2.0 * a2 * r * sin_2_theta / (s) + a2 + r2) * sin_theta * cos_theta)
+                / (s);
+        let u3_dot = -2.0
+            * u0
+            * u1
+            * (-a * r * (-4.0 * r2 / s2 + 2.0 / (s))
+                / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                    + a4 * cos_2_theta
+                    + a2 * r2 * cos_2_theta
+                    + a2 * r2
+                    + r4)
+                + 0.5
+                    * (4.0 * a * r2 * sin_2_theta / s2 - 2.0 * a * sin_2_theta / (s))
+                    * (-2.0 * r + s)
+                    / (2.0 * a2 * r * sin_2_theta * sin_2_theta
+                        - 2.0 * a2 * r * sin_2_theta
+                        - 2.0 * r3 * sin_2_theta
+                        + a4 * sin_2_theta * cos_2_theta
+                        + a2 * r2 * sin_2_theta * cos_2_theta
+                        + a2 * r2 * sin_2_theta
+                        + r4 * sin_2_theta))
+            - 2.0
+                * u0
+                * u2
+                * (-4.0 * a3 * r2 * sin_theta * cos_theta
+                    / (s2
+                        * (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                            + a4 * cos_2_theta
+                            + a2 * r2 * cos_2_theta
+                            + a2 * r2
+                            + r4))
+                    + 0.5
+                        * (-4.0 * a3 * r * sin_3_theta * cos_theta / s2
+                            - 4.0 * a * r * sin_theta * cos_theta / (s))
+                        * (-2.0 * r + s)
+                        / (2.0 * a2 * r * sin_2_theta * sin_2_theta
+                            - 2.0 * a2 * r * sin_2_theta
+                            - 2.0 * r3 * sin_2_theta
+                            + a4 * sin_2_theta * cos_2_theta
+                            + a2 * r2 * sin_2_theta * cos_2_theta
+                            + a2 * r2 * sin_2_theta
+                            + r4 * sin_2_theta))
+            - 2.0
+                * u1
+                * u3
+                * (-a * r * (4.0 * a * r2 * sin_2_theta / s2 - 2.0 * a * sin_2_theta / (s))
+                    / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                        + a4 * cos_2_theta
+                        + a2 * r2 * cos_2_theta
+                        + a2 * r2
+                        + r4)
+                    + 0.5
+                        * (-2.0 * r + s)
+                        * (-4.0 * a2 * r2 * sin_2_theta / s2
+                            + 2.0 * a2 * sin_2_theta / (s)
+                            + 2.0 * r)
+                        * sin_2_theta
+                        / (2.0 * a2 * r * sin_2_theta * sin_2_theta
+                            - 2.0 * a2 * r * sin_2_theta
+                            - 2.0 * r3 * sin_2_theta
+                            + a4 * sin_2_theta * cos_2_theta
+                            + a2 * r2 * sin_2_theta * cos_2_theta
+                            + a2 * r2 * sin_2_theta
+                            + r4 * sin_2_theta))
+            - 2.0
+                * u2
+                * u3
+                * (-a
+                    * r
+                    * (-4.0 * a3 * r * sin_3_theta * cos_theta / s2
+                        - 4.0 * a * r * sin_theta * cos_theta / (s))
+                    / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                        + a4 * cos_2_theta
+                        + a2 * r2 * cos_2_theta
+                        + a2 * r2
+                        + r4)
+                    + 0.5
+                        * ((4.0 * a4 * r * sin_3_theta * cos_theta / s2
+                            + 4.0 * a2 * r * sin_theta * cos_theta / (s))
+                            * sin_2_theta
+                            + 2.0
+                                * (2.0 * a2 * r * sin_2_theta / (s) + a2 + r2)
+                                * sin_theta
+                                * cos_theta)
+                        * (-2.0 * r + s)
+                        / (2.0 * a2 * r * sin_2_theta * sin_2_theta
+                            - 2.0 * a2 * r * sin_2_theta
+                            - 2.0 * r3 * sin_2_theta
+                            + a4 * sin_2_theta * cos_2_theta
+                            + a2 * r2 * sin_2_theta * cos_2_theta
+                            + a2 * r2 * sin_2_theta
+                            + r4 * sin_2_theta));
+
+        Matrix3::new(u0, u3, u2_dot, u1, u0_dot, u3_dot, u2, u1_dot, 0.0)
     }
 
     fn schwarzschild(&self, p: Tup, x: Tup) -> (Tup, Tup) {

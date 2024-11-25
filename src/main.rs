@@ -49,7 +49,12 @@ fn main() {
                                  //     d: Tup(0., -0.046, -1.).norm(),
                                  // };
 
-    let cam = Cam::new(Tup(0., 0., 270.6), Tup(0., -0.046, -1.).norm(), 1.);
+    let cam = Cam {
+        pos: Tup(0., 0., 270.6),
+        dir: Tup(0., -0.046, -1.).norm(),
+    };
+
+    // let geodesic = cam.props(Tup(50., 52., 295.6), 0.9375);
 
     let cx = Tup(w as f64 * 0.5135 / h as f64, 0.0, 0.0);
     let cy = (cx.cross(cam.dir)).norm() * 0.5135;

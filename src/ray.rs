@@ -12,9 +12,9 @@ pub struct Ray {
 }
 
 impl Ray {
-    pub fn compute(&self, cam_props: Geodesic) -> Geodesic {
+    pub fn compute(&self, s: Tup, cam_props: Geodesic) -> Geodesic {
         let a = cam_props.a;
-        let bl_coords = self.o.cartesian_to_boyer_lindquist(a);
+        let bl_coords = (self.o - s).cartesian_to_boyer_lindquist(a);
         let t = 0.0;
         let r = bl_coords.0;
         let theta = bl_coords.1;
