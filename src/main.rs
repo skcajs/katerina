@@ -37,11 +37,11 @@ fn to_int(x: f64) -> i32 {
 }
 
 fn main() {
-    let w = 640;
-    let h = 480;
+    let w = 320;
+    let h = 240;
     let num_samples: isize = 10; // will be evaluated to num_samples * 4
     let cam = Ray {
-        o: Tup(50. - 50., 52. - 52., 295.6 - 25.),
+        o: Tup(0., 0., 270.6),
         d: Tup(0., -0.046, -1.).norm(),
     };
 
