@@ -1,4 +1,7 @@
+mod cam;
 mod filter;
+mod geodesic;
+mod helpers;
 mod integrator;
 mod interval;
 mod ray;
@@ -17,6 +20,7 @@ use integrator::integrate;
 use integrator::IntegrationType;
 use rayon::prelude::*;
 
+use cam::Cam;
 use filter::tent_filter;
 use ray::Ray;
 use sampler::Sampler;
@@ -37,16 +41,18 @@ fn to_int(x: f64) -> i32 {
 }
 
 fn main() {
-    let w = 640;
-    let h = 480;
+    let w = 320;
+    let h = 240;
     let num_samples: isize = 10; // will be evaluated to num_samples * 4
-    let cam = Ray {
-        o: Tup(50. - 50., 52. - 52., 295.6 - 25.),
-        d: Tup(0., -0.046, -1.).norm(),
-    };
+                                 // let cam = Ray {
+                                 //     o: Tup(50. - 50., 52. - 52., 295.6 - 25.),
+                                 //     d: Tup(0., -0.046, -1.).norm(),
+                                 // };
+
+    let cam = Cam::new(Tup(0., 0., 270.6), Tup(0., -0.046, -1.).norm(), 1.);
 
     let cx = Tup(w as f64 * 0.5135 / h as f64, 0.0, 0.0);
-    let cy = (cx.cross(cam.d)).norm() * 0.5135;
+    let cy = (cx.cross(cam.dir)).norm() * 0.5135;
     let mut data: Vec<(usize, usize, Tup)> = vec![];
     for i in (0..h).rev() {
         for j in 0..w {
@@ -74,17 +80,17 @@ fn main() {
 
                         let d = cx * (((sx as f64 + 0.5 + dx) / 2. + x as f64) / w as f64 - 0.5)
                             + cy * (((sy as f64 + 0.5 + dy) / 2. + y as f64) / h as f64 - 0.5)
-                            + cam.d;
+                            + cam.dir;
 
                         acc + integrate(
                             &world,
                             Ray {
-                                o: cam.o + d * 140.,
+                                o: cam.pos + d * 140.,
                                 d: d.norm(),
                             },
                             0,
                             &mut sampler,
-                            IntegrationType::Recursive,
+                            IntegrationType::default(),
                         ) * (1. / num_samples as f64)
                     });
 

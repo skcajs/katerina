@@ -70,20 +70,20 @@ impl World {
                     Tup(1., 1., 1.) * 0.999,
                     RflType::REFR,
                 ), // Glass
-                // Sphere::new(
-                //     600.,
-                //     Tup(0., 629.6 - 0.27, 81.6 - 25.),
-                //     Tup(12., 12., 12.),
-                //     Tup::zeros(),
-                //     RflType::DIFF,
-                // ), // Light
                 Sphere::new(
-                    1.5,
-                    Tup(0., 20., 56.6),
-                    Tup(4., 4., 4.) * 100.,
+                    600.,
+                    Tup(0., 629.6 - 0.27, 81.6 - 25.),
+                    Tup(12., 12., 12.),
                     Tup::zeros(),
                     RflType::DIFF,
                 ), // Light
+                   // Sphere::new(
+                   //     1.5,
+                   //     Tup(0., 20., 56.6),
+                   //     Tup(4., 4., 4.) * 100.,
+                   //     Tup::zeros(),
+                   //     RflType::DIFF,
+                   // ), // Light
             ],
         }
     }
