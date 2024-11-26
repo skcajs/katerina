@@ -17,6 +17,7 @@ impl World {
         }
     }
 
+    #[allow(dead_code)]
     pub fn intersect(&self, ray: &Ray, t: &mut f64, id: &mut usize) -> bool {
         *t = f64::INFINITY;
         for i in (0..self.spheres.len()).rev() {
