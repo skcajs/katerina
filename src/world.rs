@@ -1,9 +1,10 @@
 use core::f64;
 
+use crate::scenes::cornell::cornell_box;
+
 use super::interval::Metric;
 use super::ray::Ray;
-use super::sphere::{RflType, Sphere};
-use super::tup::Tup;
+use super::sphere::Sphere;
 
 pub struct World {
     pub spheres: Vec<Sphere>,
@@ -12,79 +13,7 @@ pub struct World {
 impl World {
     pub fn new() -> Self {
         World {
-            spheres: vec![
-                // Scene: radius, position, emission, color, material
-                Sphere::new(
-                    1e5,
-                    Tup(1e5 - 49., -11.2, 81.6 - 25.),
-                    Tup::zeros(),
-                    Tup(0.75, 0.25, 0.25),
-                    RflType::DIFF,
-                ), // Left
-                Sphere::new(
-                    1e5,
-                    Tup(-1e5 + 49., -11.2, 81.6 - 25.),
-                    Tup::zeros(),
-                    Tup(0.25, 0.25, 0.75),
-                    RflType::DIFF,
-                ), // Right
-                Sphere::new(
-                    1e5,
-                    Tup(0., -11.2, 1e5 - 25.),
-                    Tup::zeros(),
-                    Tup(0.75, 0.75, 0.75), //Tup(0.25, 0.75, 0.75),
-                    RflType::DIFF,
-                ), // Back
-                Sphere::new(
-                    1e5,
-                    Tup(0., -11.2, -1e5 + 170. - 25.),
-                    Tup::zeros(),
-                    Tup::zeros(), //Tup(0.75, 0.75, 0.25),
-                    RflType::DIFF,
-                ), // Front
-                Sphere::new(
-                    1e5,
-                    Tup(0., 1e5 - 52., 81.6 - 25.),
-                    Tup::zeros(),
-                    Tup(0.75, 0.75, 0.75),
-                    RflType::DIFF,
-                ), // Bottom
-                Sphere::new(
-                    1e5,
-                    Tup(0., -1e5 + 29.6, 81.6 - 25.),
-                    Tup::zeros(),
-                    Tup(0.75, 0.75, 0.75),
-                    RflType::DIFF,
-                ), // Top
-                Sphere::new(
-                    16.5,
-                    Tup(-23., -35.5, 47.0 - 25.),
-                    Tup::zeros(),
-                    Tup(1., 1., 1.) * 0.999,
-                    RflType::SPEC,
-                ), // Mirror
-                Sphere::new(
-                    16.5,
-                    Tup(23., -35.5, 78. - 25.),
-                    Tup::zeros(),
-                    Tup(1., 1., 1.) * 0.999,
-                    RflType::REFR,
-                ), // Glass
-                // Sphere::new(
-                //     600.,
-                //     Tup(0., 629.6 - 0.27, 81.6 - 25.),
-                //     Tup(12., 12., 12.),
-                //     Tup::zeros(),
-                //     RflType::DIFF,
-                // ), // Light
-                Sphere::new(
-                    1.5,
-                    Tup(0., 20., 56.6),
-                    Tup(4., 4., 4.) * 100.,
-                    Tup::zeros(),
-                    RflType::DIFF,
-                ), // Light
-            ],
+            spheres: cornell_box(),
         }
     }
 
@@ -135,6 +64,9 @@ impl World {
 
             if !hit {
                 *ray = metric.rk4(ray, step_size);
+                // (*ray, step_size) = metric.rkf45(ray, step_size, 1e-6);
+
+                // println!("{:?}", step_size);
 
                 // let ray_t = ray.o - metric.s;
 
@@ -155,8 +87,9 @@ impl World {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
+    use crate::{sphere::RflType, tup::Tup};
 
+    use super::*;
     #[test]
     fn new_world() {
         let sphere = Sphere {

@@ -3,6 +3,7 @@ mod integrator;
 mod interval;
 mod ray;
 mod sampler;
+mod scenes;
 mod sphere;
 mod tup;
 mod world;

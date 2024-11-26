@@ -27,86 +27,88 @@ impl Metric {
     }
 
     #[allow(dead_code)]
-    pub fn rkf45(&self, ray: &Ray, &mut h: &mut f64) -> Ray {
+    pub fn rkf45(&self, ray: &Ray, h: f64, tol: f64) -> (Ray, f64) {
+        let mut h = h;
         let previous_x = ray.o - self.s;
-        let previous_v = ray.d;
+        let previous_p = ray.d;
 
-        let mut h_u = h;
-        let mut abs_error = 1e10;
-        let sigma = 1e-6;
-
-        let incoming: Matrix3<f64> = Matrix3::new(
-            0.,
-            previous_x.0,
-            previous_x.1,
-            previous_x.2,
-            0.,
-            previous_v.0,
-            previous_v.1,
-            previous_v.2,
-            h_u,
-        );
-
-        let mut y: Matrix3<f64> = Matrix3::zeros();
-
-        let max_iterations = 2;
-        let mut iterations = 0;
-        while abs_error > sigma && iterations < max_iterations {
-            iterations += 1;
-            let k1: Matrix3<f64> = self.derivatives(incoming);
-            let k2: Matrix3<f64> = self.derivatives(incoming + k1 * (h_u / 4.));
-            let k3: Matrix3<f64> =
-                self.derivatives(incoming + k1 * h_u * (3. / 32.) + k2 * h_u * (9. / 32.));
-            let k4: Matrix3<f64> = self.derivatives(
-                incoming + k1 * h_u * (1932. / 2197.) - k2 * h_u * (7200. / 2197.)
-                    + k3 * h_u * (7296. / 2197.),
+        loop {
+            let (k1x, k1p) = self.schwarzschild(previous_p, previous_x);
+            let (k2x, k2p) =
+                self.schwarzschild(previous_p + k1p * 0.25 * h, previous_x + k1x * 0.25 * h);
+            let (k3x, k3p) = self.schwarzschild(
+                previous_p + (k1p * (3. / 32.) + k2p * (9. / 32.)) * h,
+                previous_x + (k1x * (3. / 32.) + k2x * (9. / 32.)) * h,
             );
-            let k5: Matrix3<f64> = self.derivatives(
-                incoming + k1 * h_u * (439. / 216.) - k2 * h_u * 8. + k3 * h_u * (3680. / 513.)
-                    - k4 * h_u * (845. / 4104.),
+            let (k4x, k4p) = self.schwarzschild(
+                previous_p
+                    + (k1p * (1932. / 2197.) - k2p * (7200. / 2197.) + k3p * (7296. / 2197.)) * h,
+                previous_x
+                    + (k1x * (1932. / 2197.) - k2x * (7200. / 2197.) + k3x * (7296. / 2197.)) * h,
             );
-            let k6: Matrix3<f64> = self.derivatives(
-                incoming - k1 * h_u * (8. / 27.) + k2 * h_u * 2. - k3 * h_u * (3544. / 2565.)
-                    + k4 * h_u * (1859. / 4104.)
-                    - k5 * h_u * (11. / 40.),
+            let (k5x, k5p) = self.schwarzschild(
+                previous_p
+                    + (k1p * (439. / 216.) - k2p * 8. + k3p * (3680. / 513.)
+                        - k4p * (845. / 4104.))
+                        * h,
+                previous_x
+                    + (k1x * (439. / 216.) - k2x * 8. + k3x * (3680. / 513.)
+                        - k4x * (845. / 4104.))
+                        * h,
+            );
+            let (k6x, k6p) = self.schwarzschild(
+                previous_p
+                    - (k1p * (8. / 27.) + k2p * 2. - k3p * (3544. / 2565.) + k4p * (1859. / 4104.)
+                        - k5p * (11. / 40.))
+                        * h,
+                previous_x
+                    - (k1x * (8. / 27.) + k2x * 2. - k3x * (3544. / 2565.) + k4x * (1859. / 4104.)
+                        - k5x * (11. / 40.))
+                        * h,
             );
 
-            y = incoming
-                + (k1 * h_u * (16. / 135.)
-                    + k3 * h_u * (6656. / 12825.)
-                    + k4 * h_u * (28561. / 56430.)
-                    - k5 * h_u * (9. / 50.)
-                    + k6 * h_u * (2. / 55.));
+            // 4th-order solution
+            let x4 = previous_x
+                + (k1x * (25. / 216.) * h + k3x * (1408. / 2565.) * h + k4x * (2197. / 4104.) * h
+                    - k5x * (1. / 5.) * h);
+            let p4 = previous_p
+                + (k1p * (25. / 216.) * h + k3p * (1408. / 2565.) * h + k4p * (2197. / 4104.) * h
+                    - k5p * (1. / 5.) * h);
 
-            let error: Matrix3<f64> =
-                k1 * h_u * (25. / 216.) + k3 * h_u * (1408. / 2565.) + k4 * h_u * (2197. / 4104.)
-                    - k5 * h_u * (1. / 5.);
+            // 5th-order solution
+            let x5 = previous_x
+                + (k1x * (16. / 135.) + k3x * (6656. / 12825.) + k4x * (28561. / 56430.)
+                    - k5x * (9. / 50.)
+                    + k6x * (2. / 55.))
+                    * h;
+            let p5 = previous_p
+                + (k1p * (16. / 135.) + k3p * (6656. / 12825.) + k4p * (28561. / 56430.)
+                    - k5p * (9. / 50.)
+                    + k6p * (2. / 55.))
+                    * h;
 
-            abs_error = f64::sqrt(
-                error.m12.powi(2)
-                    + error.m13.powi(2)
-                    + error.m21.powi(2)
-                    + error.m23.powi(2)
-                    + error.m31.powi(2)
-                    + error.m32.powi(2),
-            );
+            // Error estimation
+            let error_x = (x4 - x5).len();
+            let error_p = (p4 - p5).len();
+            let error = error_x.max(error_p);
 
-            let new_h = h_u * (sigma / abs_error).powf(0.2);
-
-            if abs_error > sigma {
-                h_u = new_h;
+            // Adjust step size based on the error
+            if error < tol {
+                return (
+                    Ray {
+                        o: x5 + self.s,
+                        d: p5.norm(),
+                    },
+                    h,
+                );
             }
-        }
 
-        let current_p = Tup(y.m12, y.m13, y.m21);
-        let current_v = Tup(y.m23, y.m31, y.m32).norm();
-
-        Ray {
-            o: current_p + self.s,
-            d: current_v,
+            // Reduce step size for better accuracy
+            h *= 0.9 * (tol / error).powf(0.2);
         }
     }
 
+    #[allow(dead_code)]
     pub fn rk4(&self, ray: &Ray, h: f64) -> Ray {
         // println!("h: {}", h);
         let previous_x = ray.o - self.s;
@@ -146,30 +148,6 @@ impl Metric {
             o: new_pos,
             d: new_dir,
         }
-    }
-
-    fn derivatives(&self, y: Matrix3<f64>) -> Matrix3<f64> {
-        let x = Tup(y.m12, y.m13, y.m21);
-        let r: f64 = x.len();
-        let p: Tup = Tup(y.m23, y.m31, y.m32);
-        if r < self.rs / 4. {
-            return Matrix3::new(0., y.m12, y.m13, y.m21, 0., y.m23, y.m31, y.m32, 0.);
-        }
-        let r_adjusted = r * (1. + (self.rs / (4. * r))).powi(2);
-        let a: f64 = 1. + (self.rs / (4. * r));
-        let b: f64 = 1. - (self.rs / (4. * r));
-        let fact_x: f64 = (b * b) / a.powi(6);
-        let fact_p1: f64 = (b * b) / a.powi(7);
-        let fact_p2: f64 = 1.0 / (b * a);
-        let p_new = p * fact_x;
-        let x_new = x
-            * (-1. / (2. * r_adjusted.powi(3)))
-            * (((p.0.powi(2) + p.1.powi(2) + p.2.powi(2)) * fact_p1) + fact_p2)
-            * self.rs;
-
-        Matrix3::new(
-            0., x_new.0, x_new.1, x_new.2, 0., p_new.0, p_new.1, p_new.2, 0.,
-        )
     }
 
     fn schwarzschild(&self, p: Tup, x: Tup) -> (Tup, Tup) {
