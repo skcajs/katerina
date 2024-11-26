@@ -1,6 +1,8 @@
 mod filter;
+mod geodesic;
 mod integrator;
 mod interval;
+mod metric;
 mod ray;
 mod sampler;
 mod scenes;
@@ -14,12 +16,13 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
+use geodesic::Geodesic;
 use integrator::integrate;
 use integrator::IntegrationType;
+use metric::Metric;
 use rayon::prelude::*;
 
 use filter::tent_filter;
-use ray::Ray;
 use sampler::Sampler;
 use tup::Tup;
 use world::World;
@@ -41,13 +44,16 @@ fn main() {
     let w = 320;
     let h = 240;
     let num_samples: isize = 40; // will be evaluated to num_samples * 4
-    let cam = Ray {
-        o: Tup(0., 0., 270.6),
-        d: Tup(0., -0.046, -1.).norm(),
-    };
+                                 // let cam = Ray {
+                                 //     o: Tup(0., 0., 270.6),
+                                 //     d: Tup(0., -0.046, -1.).norm(),
+                                 // };
+    let m = Metric::new(5.0, Tup(-1., -13.2, 60.), 0.0);
+
+    let cam = Geodesic::ray(Tup(0., 0., 270.6), Tup(0., -0.046, -1.).norm(), m);
 
     let cx = Tup(w as f64 * 0.5135 / h as f64, 0.0, 0.0);
-    let cy = (cx.cross(cam.d)).norm() * 0.5135;
+    let cy = (cx.cross(cam.ray.d)).norm() * 0.5135;
     let mut data: Vec<(usize, usize, Tup)> = vec![];
     for i in (0..h).rev() {
         for j in 0..w {
@@ -75,18 +81,11 @@ fn main() {
 
                         let d = cx * (((sx as f64 + 0.5 + dx) / 2. + x as f64) / w as f64 - 0.5)
                             + cy * (((sy as f64 + 0.5 + dy) / 2. + y as f64) / h as f64 - 0.5)
-                            + cam.d;
+                            + cam.ray.d;
 
-                        acc + integrate(
-                            &world,
-                            Ray {
-                                o: cam.o + d * 140.,
-                                d: d.norm(),
-                            },
-                            0,
-                            &mut sampler,
-                            IntegrationType::Recursive,
-                        ) * (1. / num_samples as f64)
+                        let ray = Geodesic::init_ray(cam.ray.o + d * 140., d.norm(), &cam);
+                        acc + integrate(&world, ray, 0, &mut sampler, IntegrationType::Recursive)
+                            * (1. / num_samples as f64)
                     });
 
                     p.2 = p.2 + Tup(clamp(rad.0), clamp(rad.1), clamp(rad.2)) * 0.25;

@@ -2,7 +2,7 @@ use recursive::recursive;
 use std::f64::consts::PI;
 
 use crate::{
-    interval::Metric,
+    geodesic::Geodesic,
     ray::Ray,
     sampler::Sampler,
     sphere::{RflType, Sphere},
@@ -20,7 +20,7 @@ pub enum IntegrationType {
 
 pub fn integrate(
     world: &World,
-    ray: Ray,
+    ray: Geodesic,
     depth: i32,
     sampler: &mut Sampler,
     int_type: IntegrationType,
@@ -31,21 +31,26 @@ pub fn integrate(
     }
 }
 
-pub fn radiance_iter(world: &World, initial_ray: Ray, depth: i32, sampler: &mut Sampler) -> Tup {
+pub fn radiance_iter(
+    world: &World,
+    initial_ray: Geodesic,
+    depth: i32,
+    sampler: &mut Sampler,
+) -> Tup {
     // let metric = Metric::new(1.6, Tup(23., -35.5, 78. - 25.));
-    let metric = Metric::new(5., Tup(-1., -13.2, 60.));
+    // let metric = Metric::new(5., Tup(-1., -13.2, 60.));
     let mut result = Tup::zeros();
     let throughput = Tup::ones();
     let mut stack = Vec::new(); // Stack to handle rays iteratively
     stack.push((initial_ray, throughput, depth));
 
-    while let Some((mut ray, mut throughput, mut depth)) = stack.pop() {
+    while let Some((mut geo, mut throughput, mut depth)) = stack.pop() {
         loop {
             let mut t = f64::INFINITY;
             let mut id: usize = 0;
             let mut accretion_disk = false;
 
-            if !world.trace_geodesic(&mut ray, &mut t, &mut id, &mut accretion_disk, &metric) {
+            if !world.trace_geodesic(&mut geo, &mut t, &mut id, &mut accretion_disk) {
                 break;
             }
 
@@ -55,9 +60,9 @@ pub fn radiance_iter(world: &World, initial_ray: Ray, depth: i32, sampler: &mut 
             // }
 
             let obj: &Sphere = &world.spheres[id];
-            let x = ray.o + (ray.d * t);
+            let x = geo.ray.o + (geo.ray.d * t);
             let n = (x - obj.p).norm();
-            let n1 = if n.dot(ray.d) < 0.0 { n } else { n * -1.0 };
+            let n1 = if n.dot(geo.ray.d) < 0.0 { n } else { n * -1.0 };
 
             let mut f = obj.c;
             let p = f.0.max(f.1.max(f.2));
@@ -90,31 +95,25 @@ pub fn radiance_iter(world: &World, initial_ray: Ray, depth: i32, sampler: &mut 
                     let d: Tup =
                         (u * f64::cos(r1) * r2s + v * f64::sin(r1) * r2s + w * ((1. - r2).sqrt()))
                             .norm();
-                    ray = Ray { o: x, d };
+                    geo = Geodesic::ray(x, d, geo.m);
                 }
                 RflType::SPEC => {
-                    ray = Ray {
-                        o: x,
-                        d: ray.d - n * 2. * n.dot(ray.d),
-                    };
+                    geo = Geodesic::ray(x, geo.ray.d - n * 2. * n.dot(geo.ray.d), geo.m);
                 }
                 RflType::REFR => {
                     let into = n.dot(n1) > 0.;
                     let nc: f64 = 1.;
                     let nt: f64 = 1.5;
                     let nnt = if into { nc / nt } else { nt / nc };
-                    let ddn = ray.d.dot(n1);
+                    let ddn = geo.ray.d.dot(n1);
                     let cos2t = 1. - nnt * nnt * (1. - ddn * ddn);
 
                     if cos2t < 0. {
-                        ray = Ray {
-                            o: x,
-                            d: ray.d - n * 2. * n.dot(ray.d),
-                        };
+                        geo = Geodesic::ray(x, geo.ray.d - n * 2. * n.dot(geo.ray.d), geo.m);
                         continue;
                     }
 
-                    let tdir = (ray.d * nnt
+                    let tdir = (geo.ray.d * nnt
                         - n * if into { 1. } else { -1. } * (ddn * nnt + cos2t.sqrt()))
                     .norm();
 
@@ -130,29 +129,27 @@ pub fn radiance_iter(world: &World, initial_ray: Ray, depth: i32, sampler: &mut 
 
                     if depth > 2 {
                         if sampler.next() < p {
-                            ray = Ray {
-                                o: x,
-                                d: ray.d - n * 2. * n.dot(ray.d),
-                            };
+                            geo = Geodesic::ray(x, geo.ray.d - n * 2. * n.dot(geo.ray.d), geo.m);
                             throughput = throughput * rp;
                         } else {
-                            ray = Ray { o: x, d: tdir };
+                            geo.ray = Ray { o: x, d: tdir };
                             throughput = throughput * tp;
                         }
                     } else {
-                        let reflected_dir = ray.d - n * 2. * n.dot(ray.d);
+                        let reflected_dir = geo.ray.d - n * 2. * n.dot(geo.ray.d);
                         let reflected_throughput = throughput * re;
                         let refracted_throughput = throughput * tr;
 
                         stack.push((
-                            Ray {
-                                o: x,
-                                d: reflected_dir,
-                            },
+                            Geodesic::ray(x, reflected_dir, geo.m.clone()),
                             reflected_throughput,
                             depth,
                         ));
-                        stack.push((Ray { o: x, d: tdir }, refracted_throughput, depth));
+                        stack.push((
+                            Geodesic::ray(x, tdir, geo.m.clone()),
+                            refracted_throughput,
+                            depth,
+                        ));
                         break;
                     }
                 }
@@ -165,22 +162,22 @@ pub fn radiance_iter(world: &World, initial_ray: Ray, depth: i32, sampler: &mut 
 #[recursive]
 pub fn radiance(
     world: &World,
-    mut ray: Ray,
+    mut geo: Geodesic,
     mut depth: i32,
     mut sampler: &mut Sampler,
     em: f64,
 ) -> Tup {
     // let metric = Metric::new(1.6, Tup(23., -35.5, 78. - 25.));
-    let metric = Metric::new(5., Tup(-1., -13.2, 60.));
+    // let metric = Metric::new(5., Tup(-1., -13.2, 60.));
     let mut t = f64::INFINITY;
     let mut id: usize = 0;
-    if !world.trace_geodesic(&mut ray, &mut t, &mut id, &mut false, &metric) {
+    if !world.trace_geodesic(&mut geo, &mut t, &mut id, &mut false) {
         return Tup::zeros();
     }
     let obj: &Sphere = &world.spheres[id];
-    let x = ray.o + (ray.d * t); // I think this should be the current point from the trace_geodesic.
+    let x = geo.ray.o + (geo.ray.d * t); // I think this should be the current point from the trace_geodesic.
     let n = (x - obj.p).norm();
-    let n1 = if n.dot(ray.d) < 0.0 { n } else { n * -1.0 };
+    let n1 = if n.dot(geo.ray.d) < 0.0 { n } else { n * -1.0 };
 
     let mut f = obj.c;
     let p = f.0.max(f.1.max(f.2));
@@ -215,9 +212,9 @@ pub fn radiance(
                 if !sphere.is_emitter() {
                     continue; // Skip non-emissive objects
                 }
-                let adjusted_sphere = metric.transform_point(sphere.p, x);
+                // let adjusted_sphere = metric.transform_point(sphere.p, x);
                 // Calculate direction to light
-                let sw = (adjusted_sphere - x).norm();
+                let sw = (sphere.p - x).norm();
                 let su = if sw.0.abs() > 0.1 {
                     Tup(0., 1., 0.).cross(sw).norm()
                 } else {
@@ -236,11 +233,10 @@ pub fn radiance(
                 let l =
                     (su * f64::cos(phi) * sin_a + sv * f64::sin(phi) * sin_a + sw * cos_a).norm();
                 if world.trace_geodesic(
-                    &mut Ray { o: x, d: l },
+                    &mut Geodesic::ray(x, l, geo.m.clone()),
                     &mut t,
                     &mut id,
                     &mut false,
-                    &metric,
                 ) && id == i
                 {
                     let omega = 2. * PI * (1. - cos_a_max);
@@ -250,37 +246,38 @@ pub fn radiance(
 
             return obj.e * em
                 + e
-                + (f * radiance(world, Ray { o: x, d }, depth, &mut sampler, 0.));
+                + (f * radiance(
+                    world,
+                    Geodesic::ray(x, d, geo.m.clone()),
+                    depth,
+                    &mut sampler,
+                    0.,
+                ));
         }
         RflType::SPEC => {
             return obj.e
                 + f * radiance(
                     world,
-                    Ray {
-                        o: x,
-                        d: ray.d - n * 2. * n.dot(ray.d),
-                    },
+                    Geodesic::ray(x, geo.ray.d - n * 2. * n.dot(geo.ray.d), geo.m),
                     depth,
                     &mut sampler,
                     1.,
                 );
         }
         RflType::REFR => {
-            let rfl_ray = Ray {
-                o: x,
-                d: ray.d - n * 2. * n.dot(ray.d),
-            };
+            let rfl_ray = Geodesic::ray(x, geo.ray.d - n * 2. * n.dot(geo.ray.d), geo.m.clone());
             let into = n.dot(n1) > 0.;
             let nc: f64 = 1.;
             let nt: f64 = 1.5;
             let nnt = if into { nc / nt } else { nt / nc };
-            let ddn = ray.d.dot(n1);
+            let ddn = geo.ray.d.dot(n1);
             let cos2t = 1. - nnt * nnt * (1. - ddn * ddn);
             if cos2t < 0. {
                 return obj.e + f * radiance(world, rfl_ray, depth, &mut sampler, 1.);
             }
-            let tdir =
-                (ray.d * nnt - n * if into { 1. } else { -1. } * (ddn * nnt + cos2t.sqrt())).norm();
+            let tdir = (geo.ray.d * nnt
+                - n * if into { 1. } else { -1. } * (ddn * nnt + cos2t.sqrt()))
+            .norm();
             let a = nt - nc;
             let b = nt + nc;
             let r0 = a * a / (b * b);
@@ -296,11 +293,23 @@ pub fn radiance(
                     if sampler.next() < p {
                         radiance(world, rfl_ray, depth, &mut sampler, 1.) * rp
                     } else {
-                        radiance(world, Ray { o: x, d: tdir }, depth, &mut sampler, 1.) * tp
+                        radiance(
+                            world,
+                            Geodesic::ray(x, tdir, geo.m.clone()),
+                            depth,
+                            &mut sampler,
+                            1.,
+                        ) * tp
                     }
                 } else {
                     radiance(world, rfl_ray, depth, &mut sampler, 1.) * re
-                        + radiance(world, Ray { o: x, d: tdir }, depth, &mut sampler, 1.) * tr
+                        + radiance(
+                            world,
+                            Geodesic::ray(x, tdir, geo.m.clone()),
+                            depth,
+                            &mut sampler,
+                            1.,
+                        ) * tr
                 })
         }
     }
@@ -308,17 +317,24 @@ pub fn radiance(
 
 #[cfg(test)]
 mod tests {
+    use crate::metric::Metric;
+
     use super::*;
     #[test]
     fn ray_intesects_empty_world() {
-        let ray = Ray {
-            o: Tup(0., 0., 0.),  // Origin
-            d: Tup(0., 0., -1.), // Direction pointing away from any spheres
-        };
+        let geo = Geodesic::ray(
+            Tup(0., 0., 0.),
+            Tup(0., 0., -1.),
+            Metric {
+                s: Tup(0., 0., 0.),
+                a: -0.999,
+                rs: 0.0,
+            },
+        );
         let world = World { spheres: vec![] };
         let mut sampler = Sampler::new();
 
-        let result = radiance(&world, ray, 0, &mut sampler, 1.);
+        let result = radiance(&world, geo, 0, &mut sampler, 1.);
         assert_eq!(result, Tup(0., 0., 0.));
     }
 
@@ -334,13 +350,18 @@ mod tests {
         let world = World {
             spheres: vec![sphere],
         };
-        let ray = Ray {
-            o: Tup(0., 0., 0.),  // Origin
-            d: Tup(0., 0., -1.), // Direction pointing away from any spheres
-        };
+        let geo = Geodesic::ray(
+            Tup(0., 0., 0.),
+            Tup(0., 0., -1.),
+            Metric {
+                s: Tup(0., 0., 0.),
+                a: -0.999,
+                rs: 0.0,
+            },
+        );
         let mut sampler = Sampler::new();
 
-        let result = radiance(&world, ray, 0, &mut sampler, 1.);
+        let result = radiance(&world, geo, 0, &mut sampler, 1.);
         assert_eq!(result, Tup(1., 0., 0.));
     }
 }

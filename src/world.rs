@@ -1,8 +1,9 @@
 use core::f64;
 
+use crate::geodesic::Geodesic;
+
 use crate::scenes::cornell::cornell_box;
 
-use super::interval::Metric;
 use super::ray::Ray;
 use super::sphere::Sphere;
 
@@ -32,11 +33,10 @@ impl World {
 
     pub fn trace_geodesic(
         &self,
-        ray: &mut Ray,
+        geo: &mut Geodesic,
         t: &mut f64,
         id: &mut usize,
         accretion_disk: &mut bool,
-        metric: &Metric,
     ) -> bool {
         *t = f64::INFINITY;
         let max_iter = 300.0;
@@ -44,12 +44,12 @@ impl World {
         let mut step_size: f64 = initial_step_size;
         let sigma = 1e-1;
 
-        *ray = Ray { o: ray.o, d: ray.d };
+        // *ray = Ray { o: ray.o, d: ray.d };
 
         for _ in 0..max_iter as usize {
             let mut hit = false;
             for (i, sphere) in self.spheres.iter().enumerate() {
-                let d = sphere.intersect(&ray);
+                let d = sphere.intersect(&geo.ray);
                 if d > 0.0 && d < step_size {
                     if d < sigma {
                         *t = d;
@@ -64,7 +64,7 @@ impl World {
             }
 
             if !hit {
-                *ray = metric.rk4(ray, step_size);
+                *geo = geo.m.rk4(geo, step_size);
                 // (*ray, step_size) = metric.rkf45(ray, step_size, 1e-6);
 
                 // println!("{:?}", step_size);
