@@ -44,9 +44,8 @@ impl World {
         let mut step_size: f64 = initial_step_size;
         let sigma = 1e-1;
 
-        // *ray = Ray { o: ray.o, d: ray.d };
-
         for _ in 0..max_iter as usize {
+            println!("{:?}", geo.ray.o);
             let mut hit = false;
             for (i, sphere) in self.spheres.iter().enumerate() {
                 let d = sphere.intersect(&geo.ray);
@@ -64,7 +63,7 @@ impl World {
             }
 
             if !hit {
-                *geo = geo.m.rk4(geo, step_size);
+                *geo = geo.m.rk4_kerr(geo, step_size);
                 // (*ray, step_size) = metric.rkf45(ray, step_size, 1e-6);
 
                 // println!("{:?}", step_size);

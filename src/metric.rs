@@ -1,6 +1,8 @@
+use nalgebra::SVector;
+
 use crate::{geodesic::Geodesic, tup::Tup};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Metric {
     pub s: Tup,
     pub a: f64,
@@ -17,6 +19,29 @@ impl Metric {
         let current_point = geo.ray.o + geo.ray.d * h;
 
         Geodesic::ray(current_point, geo.ray.d, self.clone())
+    }
+
+    #[allow(dead_code)]
+    pub fn rk4_kerr(&self, geo: &Geodesic, h: f64) -> Geodesic {
+        let incoming: SVector<f64, 8> = SVector::<f64, 8>::from_vec(vec![
+            geo.t, geo.r, geo.theta, geo.phi, geo.u0, geo.u1, geo.u2, geo.u3,
+        ]);
+
+        let k1: SVector<f64, 8> = self.kerr(incoming);
+        let k2: SVector<f64, 8> = self.kerr(incoming + k1 * 0.5 * h);
+        let k3: SVector<f64, 8> = self.kerr(incoming + k2 * 0.5 * h);
+        let k4: SVector<f64, 8> = self.kerr(incoming + k3 * h);
+
+        let current_point: SVector<f64, 8> = incoming + (k1 + k2 * 2. + k3 * 2. + k4) * (h / 6.);
+
+        let point =
+            Tup(current_point[1], current_point[2], current_point[3]).spherical_to_cartesian();
+
+        Geodesic::ray(
+            point + self.s,
+            Tup(current_point[5], current_point[6], current_point[7]).norm(),
+            self.clone(),
+        )
     }
 
     #[allow(dead_code)]
@@ -135,6 +160,7 @@ impl Metric {
         Geodesic::ray(new_pos, new_dir, self.clone())
     }
 
+    #[allow(dead_code)]
     fn schwarzschild(&self, p: Tup, x: Tup) -> (Tup, Tup) {
         let r: f64 = x.len();
         if r < self.rs / 4. {
@@ -154,22 +180,263 @@ impl Metric {
         )
     }
 
-    pub fn transform_point(&self, light_pos: Tup, observer_pos: Tup) -> Tup {
-        // Shift positions relative to the black hole's position
-        let light_rel = light_pos - self.s;
-        let observer_rel = observer_pos - self.s;
+    #[allow(dead_code)]
+    fn kerr(&self, incoming: SVector<f64, 8>) -> SVector<f64, 8> {
+        let a = self.a;
+        let t = incoming[0];
+        let r = incoming[1];
+        let theta = incoming[2];
+        let phi = incoming[3];
+        let u0 = incoming[4];
+        let u1 = incoming[5];
+        let u2 = incoming[6];
+        let u3 = incoming[7];
 
-        // Compute radial distance in the black hole's local coordinate system
-        let r = (light_rel - observer_rel).len();
-        let factor = 1. + (self.rs / (4. * r)).powi(4);
+        let r2 = r * r;
+        let r3 = r2 * r;
+        let r4 = r2 * r2;
+        let a2 = a * a;
+        let a3 = a2 * a;
+        let a4 = a2 * a2;
 
-        // Adjust radial distance
-        let adjusted_r = r * factor;
+        let cos_theta = f64::cos(theta);
+        let sin_theta = f64::sin(theta);
+        let cos_2_theta = cos_theta * cos_theta;
+        let sin_2_theta = sin_theta * sin_theta;
+        let sin_3_theta = sin_2_theta * sin_theta;
+        let s = a2 * cos_2_theta + r2;
+        let s2 = s * s;
 
-        // Transform point in the black hole's local coordinates
-        let transformed_rel = observer_rel + (light_rel - observer_rel).norm() * adjusted_r;
+        let u0_dot = -2.0
+            * u0
+            * u1
+            * (-a * r * (4.0 * a * r2 * sin_2_theta / s2 - 2.0 * a * sin_2_theta / s)
+                / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                    + a4 * cos_2_theta
+                    + a2 * r2 * cos_2_theta
+                    + a2 * r2
+                    + r4)
+                + 0.5
+                    * (-4.0 * r2 / s2 + 2.0 / s)
+                    * (-2.0 * a2 * r * sin_2_theta
+                        - a4 * cos_2_theta
+                        - a2 * r2 * cos_2_theta
+                        - a2 * r2
+                        - r4)
+                    / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                        + a4 * cos_2_theta
+                        + a2 * r2 * cos_2_theta
+                        + a2 * r2
+                        + r4))
+            - 2.0
+                * u0
+                * u2
+                * (2.0
+                    * a2
+                    * r
+                    * (-2.0 * a2 * r * sin_2_theta
+                        - a4 * cos_2_theta
+                        - a2 * r2 * cos_2_theta
+                        - a2 * r2
+                        - r4)
+                    * sin_theta
+                    * cos_theta
+                    / (s2
+                        * (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                            + a4 * cos_2_theta
+                            + a2 * r2 * cos_2_theta
+                            + a2 * r2
+                            + r4))
+                    - a * r
+                        * (-4.0 * a3 * r * sin_3_theta * cos_theta / s2
+                            - 4.0 * a * r * sin_theta * cos_theta / s)
+                        / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                            + a4 * cos_2_theta
+                            + a2 * r2 * cos_2_theta
+                            + a2 * r2
+                            + r4))
+            - 2.0
+                * u1
+                * u3
+                * (-a
+                    * r
+                    * (-4.0 * a2 * r2 * sin_2_theta / s2 + 2.0 * a2 * sin_2_theta / s + 2.0 * r)
+                    * sin_2_theta
+                    / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                        + a4 * cos_2_theta
+                        + a2 * r2 * cos_2_theta
+                        + a2 * r2
+                        + r4)
+                    + 0.5
+                        * (4.0 * a * r2 * sin_2_theta / s2 - 2.0 * a * sin_2_theta / s)
+                        * (-2.0 * a2 * r * sin_2_theta
+                            - a4 * cos_2_theta
+                            - a2 * r2 * cos_2_theta
+                            - a2 * r2
+                            - r4)
+                        / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                            + a4 * cos_2_theta
+                            + a2 * r2 * cos_2_theta
+                            + a2 * r2
+                            + r4))
+            - 2.0
+                * u2
+                * u3
+                * (-a
+                    * r
+                    * ((4.0 * a4 * r * sin_3_theta * cos_theta / s2
+                        + 4.0 * a2 * r * sin_theta * cos_theta / s)
+                        * sin_2_theta
+                        + 2.0
+                            * (2.0 * a2 * r * sin_2_theta / s + a2 + r2)
+                            * sin_theta
+                            * cos_theta)
+                    / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                        + a4 * cos_2_theta
+                        + a2 * r2 * cos_2_theta
+                        + a2 * r2
+                        + r4)
+                    + 0.5
+                        * (-4.0 * a3 * r * sin_3_theta * cos_theta / s2
+                            - 4.0 * a * r * sin_theta * cos_theta / s)
+                        * (-2.0 * a2 * r * sin_2_theta
+                            - a4 * cos_2_theta
+                            - a2 * r2 * cos_2_theta
+                            - a2 * r2
+                            - r4)
+                        / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                            + a4 * cos_2_theta
+                            + a2 * r2 * cos_2_theta
+                            + a2 * r2
+                            + r4));
+        let u1_dot = 2.0 * a2 * u1 * u2 * sin_theta * cos_theta / s
+            + r * u2 * u2 * (-2.0 * r + a2 + r2) / s
+            - 0.5 * u0 * u0 * (4.0 * r2 / s2 - 2.0 / s) * (-2.0 * r + a2 + r2) / s
+            - u0 * u3
+                * (-4.0 * a * r2 * sin_2_theta / s2 + 2.0 * a * sin_2_theta / s)
+                * (-2.0 * r + a2 + r2)
+                / s
+            - 0.5
+                * u1
+                * u1
+                * (2.0 * r / (-2.0 * r + a2 + r2)
+                    + (2.0 - 2.0 * r) * s / ((-2.0 * r + a2 + r2) * (-2.0 * r + a2 + r2)))
+                * (-2.0 * r + a2 + r2)
+                / s
+            + 0.5
+                * u3
+                * u3
+                * (-2.0 * r + a2 + r2)
+                * (-4.0 * a2 * r2 * sin_2_theta / s2 + 2.0 * a2 * sin_2_theta / s + 2.0 * r)
+                * sin_2_theta
+                / s;
+        let u2_dot = 2.0 * a2 * r * u0 * u0 * sin_theta * cos_theta / (s2 * s)
+            - a2 * u1 * u1 * sin_theta * cos_theta / ((s) * (-2.0 * r + a2 + r2))
+            + a2 * u2 * u2 * sin_theta * cos_theta / (s)
+            - 2.0 * r * u1 * u2 / (s)
+            - u0 * u3
+                * (4.0 * a3 * r * sin_3_theta * cos_theta / s2
+                    + 4.0 * a * r * sin_theta * cos_theta / (s))
+                / (s)
+            - 0.5
+                * u3
+                * u3
+                * (-(4.0 * a4 * r * sin_3_theta * cos_theta / s2
+                    + 4.0 * a2 * r * sin_theta * cos_theta / (s))
+                    * sin_2_theta
+                    - 2.0 * (2.0 * a2 * r * sin_2_theta / (s) + a2 + r2) * sin_theta * cos_theta)
+                / (s);
+        let u3_dot = -2.0
+            * u0
+            * u1
+            * (-a * r * (-4.0 * r2 / s2 + 2.0 / (s))
+                / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                    + a4 * cos_2_theta
+                    + a2 * r2 * cos_2_theta
+                    + a2 * r2
+                    + r4)
+                + 0.5
+                    * (4.0 * a * r2 * sin_2_theta / s2 - 2.0 * a * sin_2_theta / (s))
+                    * (-2.0 * r + s)
+                    / (2.0 * a2 * r * sin_2_theta * sin_2_theta
+                        - 2.0 * a2 * r * sin_2_theta
+                        - 2.0 * r3 * sin_2_theta
+                        + a4 * sin_2_theta * cos_2_theta
+                        + a2 * r2 * sin_2_theta * cos_2_theta
+                        + a2 * r2 * sin_2_theta
+                        + r4 * sin_2_theta))
+            - 2.0
+                * u0
+                * u2
+                * (-4.0 * a3 * r2 * sin_theta * cos_theta
+                    / (s2
+                        * (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                            + a4 * cos_2_theta
+                            + a2 * r2 * cos_2_theta
+                            + a2 * r2
+                            + r4))
+                    + 0.5
+                        * (-4.0 * a3 * r * sin_3_theta * cos_theta / s2
+                            - 4.0 * a * r * sin_theta * cos_theta / (s))
+                        * (-2.0 * r + s)
+                        / (2.0 * a2 * r * sin_2_theta * sin_2_theta
+                            - 2.0 * a2 * r * sin_2_theta
+                            - 2.0 * r3 * sin_2_theta
+                            + a4 * sin_2_theta * cos_2_theta
+                            + a2 * r2 * sin_2_theta * cos_2_theta
+                            + a2 * r2 * sin_2_theta
+                            + r4 * sin_2_theta))
+            - 2.0
+                * u1
+                * u3
+                * (-a * r * (4.0 * a * r2 * sin_2_theta / s2 - 2.0 * a * sin_2_theta / (s))
+                    / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                        + a4 * cos_2_theta
+                        + a2 * r2 * cos_2_theta
+                        + a2 * r2
+                        + r4)
+                    + 0.5
+                        * (-2.0 * r + s)
+                        * (-4.0 * a2 * r2 * sin_2_theta / s2
+                            + 2.0 * a2 * sin_2_theta / (s)
+                            + 2.0 * r)
+                        * sin_2_theta
+                        / (2.0 * a2 * r * sin_2_theta * sin_2_theta
+                            - 2.0 * a2 * r * sin_2_theta
+                            - 2.0 * r3 * sin_2_theta
+                            + a4 * sin_2_theta * cos_2_theta
+                            + a2 * r2 * sin_2_theta * cos_2_theta
+                            + a2 * r2 * sin_2_theta
+                            + r4 * sin_2_theta))
+            - 2.0
+                * u2
+                * u3
+                * (-a
+                    * r
+                    * (-4.0 * a3 * r * sin_3_theta * cos_theta / s2
+                        - 4.0 * a * r * sin_theta * cos_theta / (s))
+                    / (2.0 * a2 * r * sin_2_theta - 2.0 * a2 * r - 2.0 * r3
+                        + a4 * cos_2_theta
+                        + a2 * r2 * cos_2_theta
+                        + a2 * r2
+                        + r4)
+                    + 0.5
+                        * ((4.0 * a4 * r * sin_3_theta * cos_theta / s2
+                            + 4.0 * a2 * r * sin_theta * cos_theta / (s))
+                            * sin_2_theta
+                            + 2.0
+                                * (2.0 * a2 * r * sin_2_theta / (s) + a2 + r2)
+                                * sin_theta
+                                * cos_theta)
+                        * (-2.0 * r + s)
+                        / (2.0 * a2 * r * sin_2_theta * sin_2_theta
+                            - 2.0 * a2 * r * sin_2_theta
+                            - 2.0 * r3 * sin_2_theta
+                            + a4 * sin_2_theta * cos_2_theta
+                            + a2 * r2 * sin_2_theta * cos_2_theta
+                            + a2 * r2 * sin_2_theta
+                            + r4 * sin_2_theta));
 
-        // Convert back to world coordinates
-        transformed_rel + self.s
+        SVector::<f64, 8>::from_vec(vec![u0, u1, u2, u3, u0_dot, u1_dot, u2_dot, u3_dot])
     }
 }

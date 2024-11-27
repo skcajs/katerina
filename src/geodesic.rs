@@ -2,6 +2,7 @@ use nalgebra::{Matrix4, Vector4};
 
 use crate::{metric::Metric, ray::Ray, tup::Tup};
 
+#[derive(Debug)]
 pub struct Geodesic {
     pub ray: Ray, // For resolving the image
     pub m: Metric,
@@ -21,7 +22,7 @@ impl Geodesic {
         let r_cam = bl_coords.0;
         let delta = r_cam.powi(2) - 2. * r_cam + m.a.powi(2);
         let sigma = r_cam.powi(2) + m.a.powi(2) * f64::cos(bl_coords.1).powi(2);
-        let u0_cam = Self::u0(
+        let u0 = Self::u0(
             dir.0,
             dir.1,
             dir.2,
@@ -39,10 +40,40 @@ impl Geodesic {
             r: r_cam,
             theta: bl_coords.1,
             phi: bl_coords.2,
-            u0: u0_cam,
+            u0,
             u1: dir.0,
             u2: dir.1,
             u3: dir.2,
+        }
+    }
+
+    pub fn init_cam(pos: Tup, dir: Tup, momentum: Tup, m: Metric) -> Self {
+        let bl_coords = (pos - m.s).cartesian_to_boyer_lindquist(m.a);
+        let r_cam = bl_coords.0;
+        let delta = r_cam.powi(2) - 2. * r_cam + m.a.powi(2);
+        let sigma = r_cam.powi(2) + m.a.powi(2) * f64::cos(bl_coords.1).powi(2);
+        let u0 = Self::u0(
+            momentum.0,
+            momentum.1,
+            momentum.2,
+            bl_coords.0,
+            bl_coords.1,
+            delta,
+            sigma,
+            -1.0,
+            m.a,
+        );
+        Geodesic {
+            ray: Ray { o: pos, d: dir },
+            m,
+            t: 0.,
+            r: r_cam,
+            theta: bl_coords.1,
+            phi: bl_coords.2,
+            u0,
+            u1: momentum.0,
+            u2: momentum.1,
+            u3: momentum.2,
         }
     }
 
@@ -55,12 +86,15 @@ impl Geodesic {
         let phi = bl_coords.2;
         let delta = (r * r) - (2.0 * r) + (a * a);
         let sigma = (r * r) + (a * a) * (f64::cos(theta) * f64::cos(theta));
-        let zamo_dir: Vector4<f64> = Self::rest_frame_to_zamo(dir, props, a);
+        let zamo_dir: Vector4<f64> = Self::rest_frame_to_zamo(dir * 0.05, props);
         let photon_momentum: Vector4<f64> =
             Self::zamo_to_global(zamo_dir, r, theta, phi, delta, sigma, a);
 
         Geodesic {
-            ray: Ray { o: pos, d: dir },
+            ray: Ray {
+                o: pos,
+                d: dir.norm(),
+            },
             m: props.m.clone(),
             t,
             r,
@@ -73,8 +107,9 @@ impl Geodesic {
         }
     }
 
-    fn rest_frame_to_zamo(ray_dir: Tup, cam_props: &Geodesic, a: f64) -> Vector4<f64> {
+    fn rest_frame_to_zamo(ray_dir: Tup, cam_props: &Geodesic) -> Vector4<f64> {
         let r = cam_props.r;
+        let a = cam_props.m.a;
         let theta = cam_props.theta;
         let phi = cam_props.phi;
         let delta = (r * r) - (2.0 * r) + (a * a);
@@ -166,7 +201,7 @@ impl Geodesic {
         Vector4::new(u0, u1, u2, u3)
     }
 
-    fn u0(
+    pub fn u0(
         u1: f64,
         u2: f64,
         u3: f64,
@@ -195,5 +230,16 @@ impl Geodesic {
         };
 
         ((-gt_phi / gtt) * u3) + root_term
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_geodesic() {
+        let res = Geodesic::u0(0.0, 0.0, 0.0, 10.0, 3.1415 / 2.0, 1.0, 1.0, -1.0, -0.999);
+        println!("{:?}", res);
     }
 }

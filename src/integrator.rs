@@ -20,14 +20,14 @@ pub enum IntegrationType {
 
 pub fn integrate(
     world: &World,
-    ray: Geodesic,
+    geo: Geodesic,
     depth: i32,
     sampler: &mut Sampler,
     int_type: IntegrationType,
 ) -> Tup {
     match int_type {
-        IntegrationType::Iterative => radiance_iter(world, ray, depth, sampler),
-        IntegrationType::Recursive => radiance(world, ray, depth, sampler, 1.),
+        IntegrationType::Iterative => radiance_iter(world, geo, depth, sampler),
+        IntegrationType::Recursive => radiance(world, geo, depth, sampler, 1.),
     }
 }
 

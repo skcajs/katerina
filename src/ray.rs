@@ -1,6 +1,6 @@
 use super::tup::Tup;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Ray {
     pub o: Tup,
     pub d: Tup,

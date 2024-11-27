@@ -43,14 +43,20 @@ fn to_int(x: f64) -> i32 {
 fn main() {
     let w = 320;
     let h = 240;
-    let num_samples: isize = 40; // will be evaluated to num_samples * 4
-                                 // let cam = Ray {
-                                 //     o: Tup(0., 0., 270.6),
-                                 //     d: Tup(0., -0.046, -1.).norm(),
-                                 // };
-    let m = Metric::new(5.0, Tup(-1., -13.2, 60.), 0.0);
+    let num_samples: isize = 4; // will be evaluated to num_samples * 4
+                                // let cam = Ray {
+                                //     o: Tup(0., 0., 270.6),
+                                //     d: Tup(0., -0.046, -1.).norm(),
+                                // };
+    let m = Metric::new(5.0, Tup(-1., -13.2, 60.), -0.999);
+    // let m = Metric::new(5.0, Tup(0., 0., 0.), -0.999);
 
-    let cam = Geodesic::ray(Tup(0., 0., 270.6), Tup(0., -0.046, -1.).norm(), m);
+    let cam = Geodesic::init_cam(
+        Tup(0., 0., 270.6),
+        Tup(0., -0.046, -1.).norm(),
+        Tup(0., 0., 0.),
+        m,
+    );
 
     let cx = Tup(w as f64 * 0.5135 / h as f64, 0.0, 0.0);
     let cy = (cx.cross(cam.ray.d)).norm() * 0.5135;
@@ -84,6 +90,7 @@ fn main() {
                             + cam.ray.d;
 
                         let ray = Geodesic::init_ray(cam.ray.o + d * 140., d.norm(), &cam);
+
                         acc + integrate(&world, ray, 0, &mut sampler, IntegrationType::Recursive)
                             * (1. / num_samples as f64)
                     });
@@ -118,5 +125,47 @@ fn main() {
             to_int(data[i].2 .2)
         )
         .unwrap();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_clamp() {
+        let cam_pos = Tup(10., 10., 10.);
+        let cam_dir = Tup(0., 0., 1.); // x,y,z
+        let cam_mom = Tup(-1., 0., 0.);
+        let ray_origin = Tup(10., 10., 10.);
+        let ray_dir = Tup(0., 0., 1.);
+
+        let cam_props = Geodesic::init_cam(
+            cam_pos,
+            cam_dir,
+            cam_mom,
+            Metric::new(0.0, Tup(0., 0., 0.), -0.999),
+        );
+
+        let ray_props = Geodesic::init_ray(ray_origin, ray_dir, &cam_props);
+
+        // let m = ray_props.m;
+
+        // ray_props = m.rk4_kerr(ray_props, 0.5);
+
+        println!("u0 {:?}", ray_props.u0);
+        println!("u1 {:?}", ray_props.u1);
+        println!("u2 {:?}", ray_props.u2);
+        println!("u3 {:?}", ray_props.u3);
+        println!("phi {:?}", ray_props.phi);
+        println!("r {:?}", ray_props.r);
+        println!("theta {:?}", ray_props.theta);
+    }
+
+    #[test]
+    fn test_to_int() {
+        assert_eq!(to_int(0.0), 0);
+        assert_eq!(to_int(0.5), 115);
+        assert_eq!(to_int(1.0), 255);
     }
 }
