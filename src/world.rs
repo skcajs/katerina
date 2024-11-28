@@ -2,7 +2,7 @@ use core::f64;
 
 use crate::geodesic::Geodesic;
 
-use crate::scenes::cornell::cornell_box;
+use crate::scenes::cornell::{cornell_box, cornell_box_recursive};
 use crate::solver::{solve, Solver};
 
 use super::ray::Ray;
@@ -13,9 +13,15 @@ pub struct World {
 }
 
 impl World {
-    pub fn new() -> Self {
+    pub fn cornell() -> Self {
         World {
             spheres: cornell_box(),
+        }
+    }
+
+    pub fn cornell_recursive() -> Self {
+        World {
+            spheres: cornell_box_recursive(),
         }
     }
 
@@ -94,14 +100,14 @@ mod tests {
             c: Tup(0.75, 0.25, 0.25),
             rfl: RflType::DIFF,
         };
-        let world = World::new();
+        let world = World::cornell();
         assert_eq!(world.spheres.len(), 9);
         assert_eq!(world.spheres[0], sphere)
     }
 
     #[test]
     fn ray_intersects() {
-        let world = World::new();
+        let world = World::cornell();
         let ray = Ray {
             o: Tup(0.0, 0.0, -5.0),
             d: Tup(0.0, 0.0, 1.0),
@@ -114,7 +120,7 @@ mod tests {
 
     #[test]
     fn ray_does_not_intersect() {
-        let world = World::new();
+        let world = World::cornell();
         let ray = Ray {
             o: Tup(0.0, 0.0, -200000.0),
             d: Tup(0.0, 0.0, 0.0),

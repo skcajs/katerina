@@ -19,15 +19,20 @@ pub enum IntegrationType {
 }
 
 pub fn integrate(
-    world: &World,
     geo: Geodesic,
     depth: i32,
     sampler: &mut Sampler,
     int_type: IntegrationType,
 ) -> Tup {
     match int_type {
-        IntegrationType::Iterative => radiance_iter(world, geo, depth, sampler),
-        IntegrationType::Recursive => radiance(world, geo, depth, sampler, 1.),
+        IntegrationType::Iterative => {
+            let world = World::cornell();
+            radiance_iter(&world, geo, depth, sampler) // Iterative integration
+        }
+        IntegrationType::Recursive => {
+            let world = World::cornell_recursive();
+            radiance(&world, geo, depth, sampler, 1.)
+        }
     }
 }
 

@@ -68,8 +68,6 @@ fn main() {
         }
     }
 
-    let world = World::new();
-
     let now = Instant::now();
 
     let progress_counter = AtomicUsize::new(0);
@@ -92,7 +90,7 @@ fn main() {
 
                         let ray = Geodesic::init_ray(cam.ray.o + d * 140., d.norm(), &cam);
 
-                        acc + integrate(&world, ray, 0, &mut sampler, IntegrationType::default())
+                        acc + integrate(ray, 0, &mut sampler, IntegrationType::default())
                             * (1. / num_samples as f64)
                     });
 
