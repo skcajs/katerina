@@ -39,8 +39,8 @@ impl World {
         accretion_disk: &mut bool,
     ) -> bool {
         *t = f64::INFINITY;
-        let max_iter = 400.0;
-        let initial_step_size = 25.;
+        let max_iter = 300.0;
+        let initial_step_size = 10.;
         let mut step_size: f64 = initial_step_size;
         let sigma = 1e-3;
 
@@ -58,7 +58,7 @@ impl World {
                         return true;
                     } else {
                         hit = true;
-                        // step_size *= 0.5;
+                        step_size *= 0.5;
                         break;
                     }
                 }
@@ -66,7 +66,7 @@ impl World {
 
             if !hit {
                 // *geo = geo.m.rk4_kerr(geo, step_size);
-                *geo = geo.m.rkf45_kerr(geo, &mut step_size);
+                *geo = geo.m.rk4(geo, step_size);
 
                 // println!("{:?}", step_size);
 
@@ -77,7 +77,7 @@ impl World {
                 //     return true;
                 // }
 
-                // step_size = (step_size * 1.05).min(initial_step_size * 2.);
+                step_size = (step_size * 1.05).min(initial_step_size * 2.);
             }
         }
 

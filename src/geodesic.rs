@@ -91,10 +91,7 @@ impl Geodesic {
             Self::zamo_to_global(zamo_dir, r, theta, phi, delta, sigma, a);
 
         Geodesic {
-            ray: Ray {
-                o: pos,
-                d: Tup(photon_momentum[1], photon_momentum[2], photon_momentum[3]).norm(),
-            },
+            ray: Ray { o: pos, d: dir },
             m: props.m.clone(),
             t,
             r,
