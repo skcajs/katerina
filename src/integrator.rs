@@ -325,11 +325,7 @@ mod tests {
         let geo = Geodesic::ray(
             Tup(0., 0., 0.),
             Tup(0., 0., -1.),
-            Metric {
-                s: Tup(0., 0., 0.),
-                a: -0.999,
-                rs: 0.0,
-            },
+            Metric::new(Tup(0., 0., 0.), -0.999, 0.0),
         );
         let world = World { spheres: vec![] };
         let mut sampler = Sampler::new();
@@ -353,11 +349,7 @@ mod tests {
         let geo = Geodesic::ray(
             Tup(0., 0., 0.),
             Tup(0., 0., -1.),
-            Metric {
-                s: Tup(0., 0., 0.),
-                a: -0.999,
-                rs: 0.0,
-            },
+            Metric::new(Tup(0., 0., 0.), -0.999, 2.5),
         );
         let mut sampler = Sampler::new();
 

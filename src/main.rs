@@ -6,6 +6,7 @@ mod metric;
 mod ray;
 mod sampler;
 mod scenes;
+mod solver;
 mod sphere;
 mod tup;
 mod world;

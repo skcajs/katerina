@@ -3,6 +3,7 @@ use core::f64;
 use crate::geodesic::Geodesic;
 
 use crate::scenes::cornell::cornell_box;
+use crate::solver::{solve, Solver};
 
 use super::ray::Ray;
 use super::sphere::Sphere;
@@ -49,8 +50,6 @@ impl World {
             for (i, sphere) in self.spheres.iter().enumerate() {
                 let d = sphere.intersect(&geo.ray);
                 if d > 0.0 && d < step_size {
-                    // println!("step_size: {}", step_size);
-                    // println!("d: {}", d);
                     if d < sigma {
                         // println!("d: {}", d);
                         *t = d;
@@ -65,8 +64,7 @@ impl World {
             }
 
             if !hit {
-                // *geo = geo.m.rk4_kerr(geo, step_size);
-                *geo = geo.m.rkf45_kerr(geo, &mut step_size);
+                *geo = solve(Solver::RK4, geo, &mut step_size);
 
                 // println!("{:?}", step_size);
 
@@ -76,8 +74,6 @@ impl World {
                 //     *test_color = true;
                 //     return true;
                 // }
-
-                // step_size = (step_size * 1.05).min(initial_step_size * 2.);
             }
         }
 
