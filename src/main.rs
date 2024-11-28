@@ -48,7 +48,7 @@ fn main() {
                                 //     o: Tup(0., 0., 270.6),
                                 //     d: Tup(0., -0.046, -1.).norm(),
                                 // };
-    let m = Metric::new(5.0, Tup(-1., -13.2, 60.), -0.999);
+    let m = Metric::new(Tup(-1., -13.2, 60.), -0.999, 2.5);
     // let m = Metric::new(5.0, Tup(0., 0., 0.), -0.999);
 
     let cam = Geodesic::init_cam(
@@ -91,7 +91,7 @@ fn main() {
 
                         let ray = Geodesic::init_ray(cam.ray.o + d * 140., d.norm(), &cam);
 
-                        acc + integrate(&world, ray, 0, &mut sampler, IntegrationType::Recursive)
+                        acc + integrate(&world, ray, 0, &mut sampler, IntegrationType::default())
                             * (1. / num_samples as f64)
                     });
 
@@ -144,7 +144,7 @@ mod tests {
             cam_pos,
             cam_dir,
             cam_mom,
-            Metric::new(0.0, Tup(0., 0., 0.), -0.999),
+            Metric::new(Tup(0., 0., 0.), -0.999, 2.5),
         );
 
         let ray_props = Geodesic::init_ray(ray_origin, ray_dir, &cam_props);

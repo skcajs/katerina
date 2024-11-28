@@ -2,7 +2,7 @@ use nalgebra::{Matrix4, Vector4};
 
 use crate::{metric::Metric, ray::Ray, tup::Tup};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Geodesic {
     pub ray: Ray, // For resolving the image
     pub m: Metric,
@@ -93,7 +93,7 @@ impl Geodesic {
         Geodesic {
             ray: Ray {
                 o: pos,
-                d: dir.norm(),
+                d: Tup(photon_momentum[1], photon_momentum[2], photon_momentum[3]).norm(),
             },
             m: props.m.clone(),
             t,
@@ -168,7 +168,7 @@ impl Geodesic {
             ray_dir.2,
         );
         ray4 = m_cam * ray4;
-        Vector4::new(ray4[1], ray4[2], ray4[3], ray4[0])
+        Vector4::new(ray4.y, ray4.z, ray4.w, ray4.x)
     }
 
     fn zamo_to_global(

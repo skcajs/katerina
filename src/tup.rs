@@ -37,8 +37,8 @@ impl Tup {
         // r = self.0, theta = self.1, phi = self.2
         Tup(
             self.0 * f64::sin(self.1) * f64::cos(self.2),
-            self.0 * f64::sin(self.1) * f64::sin(self.2),
-            self.0 * f64::cos(self.1),
+            self.0 * f64::sin(self.1),
+            self.0 * f64::cos(self.1) * f64::sin(self.2),
         )
     }
 
@@ -46,19 +46,29 @@ impl Tup {
     pub fn cartesian_to_spherical(self) -> Self {
         // x = self.0, y = self.1, z = self.2
         let r = self.len();
-        let theta = f64::acos(self.2 / r);
-        let phi = f64::atan2(self.1, self.0);
+        let theta = f64::acos(self.1 / r);
+        let phi = f64::atan2(self.2, self.0);
         Tup(r, theta, phi)
     }
 
     #[allow(dead_code)]
     pub fn cartesian_to_boyer_lindquist(self, a: f64) -> Self {
         let Tup(x, y, z) = self;
-        let w = (x * x + y * y + z * z) - a * a;
-        let r = (0.5 * (w + ((w * w) + (4. * (a * a) * (z * z))).sqrt())).sqrt();
-        let theta = f64::acos(z / r);
-        let phi = f64::atan2(y, x);
+        let w = (x * x + y * y + z * z) - (a * a);
+        let r = f64::sqrt(0.5 * (w + f64::sqrt((w * w) + (4. * (a * a) * (y * y)))));
+        let theta = f64::acos(y / r);
+        let phi = f64::atan2(z, x);
         Tup(r, theta, phi)
+    }
+
+    #[allow(dead_code)]
+    pub fn boyer_lindquist_to_cartesian(self, a: f64) -> Self {
+        let Tup(r, theta, phi) = self;
+        let sqrt_term = (r * r + a * a).sqrt();
+        let x = sqrt_term * theta.sin() * phi.cos();
+        let y = r * theta.cos();
+        let z = sqrt_term * theta.sin() * phi.sin();
+        Tup(x, y, z)
     }
 }
 
@@ -180,5 +190,17 @@ mod tests {
         assert_eq!(v1.0, 3.0);
         assert_eq!(v1.1, 5.0);
         assert_eq!(v1.2, 7.0);
+    }
+
+    #[test]
+    fn cartesian_to_boyer_lindquist() {
+        let v = Tup(3., 4., 5.);
+        let a = 0.999;
+        let v_bl = v.cartesian_to_boyer_lindquist(a);
+        // let expected_bl_coords = Tup(7.071, 1.107, 1.030);
+        println!("v{:?}", v);
+        println!("v_bl{:?}", v_bl);
+        // println!("v_sp{:?}", v_bl.spherical_to_cartesian());
+        println!("v{:?}", v_bl.boyer_lindquist_to_cartesian(a));
     }
 }

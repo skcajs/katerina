@@ -23,7 +23,7 @@ impl Sphere {
     }
 
     pub fn intersect(&self, ray: &Ray) -> f64 {
-        let eps = 1e-3;
+        let eps = 1e-9;
         let op = self.p - ray.o;
         let b = op.dot(ray.d);
         let det = b * b - op.dot(op) + self.r * self.r;
