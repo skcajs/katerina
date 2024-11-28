@@ -211,7 +211,6 @@ pub fn rkf45(geo: &Geodesic, step: &mut f64) -> Geodesic {
 
 #[allow(dead_code)]
 pub fn rk4(geo: &Geodesic, step: &mut f64) -> Geodesic {
-    // println!("h: {}", h);
     let previous_x = geo.ray.o - geo.m.s;
     let previous_p = geo.ray.d;
 

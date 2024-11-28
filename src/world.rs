@@ -40,8 +40,8 @@ impl World {
         accretion_disk: &mut bool,
     ) -> bool {
         *t = f64::INFINITY;
-        let max_iter = 400.0;
-        let initial_step_size = 25.;
+        let max_iter = 300.0;
+        let initial_step_size = 10.;
         let mut step_size: f64 = initial_step_size;
         let sigma = 1e-3;
 
@@ -51,13 +51,12 @@ impl World {
                 let d = sphere.intersect(&geo.ray);
                 if d > 0.0 && d < step_size {
                     if d < sigma {
-                        // println!("d: {}", d);
                         *t = d;
                         *id = i;
                         return true;
                     } else {
                         hit = true;
-                        // step_size *= 0.5;
+                        step_size *= 0.5;
                         break;
                     }
                 }
@@ -65,8 +64,6 @@ impl World {
 
             if !hit {
                 *geo = solve(Solver::RK4, geo, &mut step_size);
-
-                // println!("{:?}", step_size);
 
                 // let ray_t = ray.o - metric.s;
 

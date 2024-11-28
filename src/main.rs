@@ -44,11 +44,11 @@ fn to_int(x: f64) -> i32 {
 fn main() {
     let w = 320;
     let h = 240;
-    let num_samples: isize = 4; // will be evaluated to num_samples * 4
-                                // let cam = Ray {
-                                //     o: Tup(0., 0., 270.6),
-                                //     d: Tup(0., -0.046, -1.).norm(),
-                                // };
+    let num_samples: isize = 25; // will be evaluated to num_samples * 4
+                                 // let cam = Ray {
+                                 //     o: Tup(0., 0., 270.6),
+                                 //     d: Tup(0., -0.046, -1.).norm(),
+                                 // };
     let m = Metric::new(Tup(-1., -13.2, 60.), -0.999, 2.5);
     // let m = Metric::new(5.0, Tup(0., 0., 0.), -0.999);
 
