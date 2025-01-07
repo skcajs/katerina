@@ -29,7 +29,7 @@ pub fn cornell_box() -> Vec<Sphere> {
         ), // Back
         Sphere::new(
             1e5,
-            Tup(0., -11.2, -1e5 + 170. - 25.),
+            Tup(0., -11.2, -1e5 + 145.),
             Tup::zeros(),
             Tup::zeros(), //Tup(0.75, 0.75, 0.25),
             RflType::DIFF,
@@ -69,6 +69,13 @@ pub fn cornell_box() -> Vec<Sphere> {
             Tup::zeros(),
             RflType::DIFF,
         ), // Light
+           // Sphere::new(
+           //     4.,
+           //     Tup(-1., -13.2, 0.),
+           //     Tup(12., 12., 12.),
+           //     Tup::zeros(),
+           //     RflType::DIFF,
+           // ), // einstein ring
     ]
 }
 
@@ -132,9 +139,9 @@ pub fn cornell_box_recursive() -> Vec<Sphere> {
             RflType::REFR,
         ), // Glass
         Sphere::new(
-            1.5,
-            Tup(0., 20., 56.6),
-            Tup(4., 4., 4.) * 100.,
+            600.,
+            Tup(0., 629.6 - 0.27, 81.6 - 25.),
+            Tup(12., 12., 12.),
             Tup::zeros(),
             RflType::DIFF,
         ), // Light

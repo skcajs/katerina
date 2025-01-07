@@ -26,7 +26,6 @@ use rayon::prelude::*;
 use filter::tent_filter;
 use sampler::Sampler;
 use tup::Tup;
-use world::World;
 
 fn clamp(x: f64) -> f64 {
     if x < 0. {
@@ -42,14 +41,16 @@ fn to_int(x: f64) -> i32 {
 }
 
 fn main() {
-    let w = 320;
-    let h = 240;
-    let num_samples: isize = 25; // will be evaluated to num_samples * 4
-                                 // let cam = Ray {
-                                 //     o: Tup(0., 0., 270.6),
-                                 //     d: Tup(0., -0.046, -1.).norm(),
-                                 // };
+    let w = 640;
+    let h = 480;
+    let num_samples: isize = 2; // will be evaluated to num_samples * 4
+                                // let cam = Ray {
+                                //     o: Tup(0., 0., 270.6),
+                                //     d: Tup(0., -0.046, -1.).norm(),
+                                // };
+                                // let m = Metric::new(Tup(-12., -22., 60.), -0.999, 2.5);
     let m = Metric::new(Tup(-1., -13.2, 60.), -0.999, 2.5);
+    // let m = Metric::new(Tup(0., -35.5, 22.), -0.999, 2.5);
     // let m = Metric::new(5.0, Tup(0., 0., 0.), -0.999);
 
     let cam = Geodesic::init_cam(

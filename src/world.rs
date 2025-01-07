@@ -46,7 +46,7 @@ impl World {
         accretion_disk: &mut bool,
     ) -> bool {
         *t = f64::INFINITY;
-        let max_iter = 300.0;
+        let max_iter = 350.0;
         let initial_step_size = 10.;
         let mut step_size: f64 = initial_step_size;
         let sigma = 1e-3;
@@ -71,7 +71,11 @@ impl World {
             if !hit {
                 *geo = solve(Solver::RK4, geo, &mut step_size);
 
-                // let ray_t = ray.o - metric.s;
+                let ray_t = geo.ray.o - geo.m.s;
+
+                if ray_t.len() < geo.m.rs {
+                    return false;
+                }
 
                 // if metric.rs > 0. && ray_t.1.abs() < 0.1 && ray_t.len() > 10. && ray_t.len() < 30. {
                 //     *test_color = true;
