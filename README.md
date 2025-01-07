@@ -1,62 +1,108 @@
 # Katerina - A Geodesic Path Tracer
 
-Besed of a smallpt, written in rust. 
+**Katerina** is a geodesic path tracer inspired by [Smallpt](https://www.kevinbeason.com/smallpt/#moreinfo), written entirely in Rust.
 
-https://www.kevinbeason.com/smallpt/#moreinfo
+---
 
-### Rust is required to run this project
+## Requirements
 
-You can run this project by running the command:
+- **Rust**: Ensure Rust is installed on your system. You can install it from [rust-lang.org](https://www.rust-lang.org/).
+- **Rayon**: Rayon is used for parallel processing and should be automatically installed when running the project.
 
-cargo run --release
+---
 
-!!IMPORTANT!! use --release or you will be waiting a long time ;)
+## Getting Started
 
-Rayon is required to run this project, but should be installed automatically (or when you run cargo install)
+Run the project using the following command:  
 
-You can modify the image resolution and number of samples in the main function (right at the top of the function).
+```bash
+cargo run --release  
+```
 
-The IntegrationType can be either Iterative (default) or Recursive. The recursive function is faster, because it also uses light source sampling (try reducing the number of samples).
+**Important:** Always use the `--release` flag for optimized performance; without it, render times will be significantly longer.
 
-You can also update the values in the metric, m (under the main function). The parameters are:
+### Configuration Options
 
-s: the position of the centre of the black hole/ mass
-a: the angular momentum (useful for the Kerr metric, not fully implemented yet)
-m: the mass of the the black hole (and hence the Schwarszchild metric)
+You can modify the following parameters directly in the `main` function:
 
-The current scene is a simple cornell box, under scenes>cornell.rs. There are currently two variants, the second scene is used by the recursive function, and is needed because the light sphere is originally a massive sphere and only a small portion of it is visible, thus does not work well with light surface sampling. The scenes will swap automatically when switching the IntegrationType.
+- **Image Resolution**: Adjust the resolution of the rendered image.
+- **Number of Samples**: Configure the number of samples per pixel.
 
-Images are saves as image.ppm, in the root directory.
+Additionally, you can set the integration type to either:  
+- **Iterative** (default)  
+- **Recursive** (faster due to light source sampling).  
+
+For the recursive option, you can reduce the number of samples for quicker results.
+
+---
+
+## Metric Parameters
+
+The `metric` parameters in the `main` function allow you to adjust properties related to the black hole simulation:
+
+- **`s`**: Position of the black hole/mass center.
+- **`a`**: Angular momentum (relevant for the Kerr metric; not fully implemented yet).
+- **`m`**: Mass of the black hole (used for the Schwarzschild metric).
+
+---
+
+## Scene Description
+
+The default scene is a simple Cornell box located in `scenes/cornell.rs`.  
+
+Two scene variants are available:
+1. **Default Scene**: Works with the iterative method.
+2. **Light Surface Sampling Scene**: Required for the recursive method, where the light sphere is modified for better light surface sampling.
+
+The appropriate scene is automatically selected based on the chosen integration type.  
+
+Rendered images are saved as `image.ppm` in the root directory.
+
+---
 
 ## Project Structure
 
-main.rs
-The entrypoint is in main.rs, where a ray is initialised and then calls the integrate function in integrator.rs.
+### Main Files:
+- **`main.rs`**  
+  The entry point where rays are initialized and the `integrate` function from `integrator.rs` is invoked.
 
-integrator.rs
-Within the integrator, the ray is tested for an intersection within the world.trace_geodesic function in world.rs, and for a sucessful intersection, the ray is then scattered off its surface, according the the surfaces BSDF. This is an iterative (or recursive process)
+- **`integrator.rs`**  
+  Handles ray tracing by testing intersections using the `world.trace_geodesic` function from `world.rs`.  
+  For successful intersections, rays are scattered according to the BSDF of the surface.
 
-world.rs
-The trace_geodisic function is the main function in this file, which marches the ray through the geodesic world lines using a solver within the solver.rs file, the current working solver is RK4. There is also a RKf45 method (WIP). The solver returns the rays position and direction at each step. The geodesic tracer then tests for an intersection at close proximity. If an intersection occurs, the function returns true.
+- **`world.rs`**  
+  Contains the `trace_geodesic` function, which marches rays through geodesic world lines using solvers from `solver.rs`.  
+  The RK4 solver is currently implemented, while RKF45 is a work in progress.
 
-solver.rs
-This file contains various functions for both the metrics, and the numerical integration of the EOM's (equations of motion). They take the current ray, and step them through a timestep, returning the successive position and momentum of the ray.
+- **`solver.rs`**  
+  Provides functions for numerical integration of equations of motion (EOMs) and geodesic metric calculations.  
+  It steps rays through the simulation and returns their successive positions and momenta.
 
-sphere.rs
-Defines the equations for a sphere, which is currently what the world is comprised of.
+### Additional Files:
+- **`sphere.rs`**  
+  Defines equations for spheres, which currently compose the entire world.
 
-tup.rs
-Useful vector functions needed.
+- **`tup.rs`**  
+  Utility functions for vector operations.
 
-ray.rs
-A ray object, with position and direction, in cartesian form.
+- **`ray.rs`**  
+  Defines a ray object, including its position and direction in Cartesian coordinates.
 
-geodesic.rs
-Think of this as a ray++ object, which contains the ray, and much more. This is primarily needed as the Kerr solution requires working in spherical coordinate systems, and parameters for the angular momentum. This is only useful for the Kerr metric and beyond, which is not fully implemented yet.
+- **`geodesic.rs`**  
+  Extends the ray object with additional data required for spherical coordinate systems and angular momentum (useful for the Kerr metric, not yet fully implemented).
 
-metric.rs
-Contains information about the Metric, such as its position in the world, the mass (schwarzschild) and the a parameter (kerr).
+- **`metric.rs`**  
+  Stores information about the metric, including its position, mass (`m` for Schwarzschild), and angular momentum (`a` for Kerr).
 
-interval.rs
-Redundant, replaced with solver.rs
+- **`interval.rs`**  
+  Previously used for solvers; now replaced by `solver.rs`.
 
+---
+
+## Notes
+
+- The project uses the RK4 solver for geodesic calculations by default.
+- Light source sampling is only available for the recursive integration type.
+- The Kerr metric implementation is incomplete but will be expanded in future updates.
+
+---

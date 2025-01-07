@@ -60,7 +60,7 @@ pub fn rk4_kerr(geo: &Geodesic, step: &mut f64) -> Geodesic {
 
     let dir = (point - geo.ray.o).norm();
 
-    // *step = (h * 1.05).min(geo.m.initial_step * 2.);
+    *step = (h * 1.05).min(geo.m.initial_step * 2.);
 
     Geodesic::ray(point, dir, geo.m.clone())
 }
