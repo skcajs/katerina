@@ -43,12 +43,13 @@ fn to_int(x: f64) -> i32 {
 fn main() {
     let w = 640;
     let h = 480;
-    let num_samples: isize = 2; // will be evaluated to num_samples * 4
-                                // let cam = Ray {
-                                //     o: Tup(0., 0., 270.6),
-                                //     d: Tup(0., -0.046, -1.).norm(),
-                                // };
-                                // let m = Metric::new(Tup(-12., -22., 60.), -0.999, 2.5);
+    let num_samples: isize = 50; // will be evaluated to num_samples * 4
+                                 // let cam = Ray {
+                                 //     o: Tup(0., 0., 270.6),
+                                 //     d: Tup(0., -0.046, -1.).norm(),
+                                 // };
+
+    // let m = Metric::new(Tup(-12., -22., 60.), -0.999, 2.5);
     let m = Metric::new(Tup(-1., -13.2, 60.), -0.999, 2.5);
     // let m = Metric::new(Tup(0., -35.5, 22.), -0.999, 2.5);
     // let m = Metric::new(5.0, Tup(0., 0., 0.), -0.999);
@@ -85,12 +86,15 @@ fn main() {
                     rad = (0..num_samples).into_iter().fold(rad, |acc, _| {
                         let (dx, dy) = tent_filter(&mut sampler);
 
+                        // Obtain initial direction for each pixel. We need to sample the middle of the pixel
                         let d = cx * (((sx as f64 + 0.5 + dx) / 2. + x as f64) / w as f64 - 0.5)
                             + cy * (((sy as f64 + 0.5 + dy) / 2. + y as f64) / h as f64 - 0.5)
                             + cam.ray.d;
 
+                        // Obtain the ray as a geodesic object.
                         let ray = Geodesic::init_ray(cam.ray.o + d * 140., d.norm(), &cam);
 
+                        // Integrate the ray for a given number of samples.
                         acc + integrate(ray, 0, &mut sampler, IntegrationType::default())
                             * (1. / num_samples as f64)
                     });
