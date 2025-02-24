@@ -13,6 +13,8 @@
 
 ## Getting Started
 
+IMPORTANT! Make sure you're on the 'all-broken' branch, conveniently named. TODO: Merge in.
+
 Run the project using the following command:  
 
 ```bash
