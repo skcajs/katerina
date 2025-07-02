@@ -108,3 +108,7 @@ Rendered images are saved as `image.ppm` in the root directory.
 - The Kerr metric implementation is almost complete but will be implemented in future updates.
 
 ---
+
+## Licence
+
+The source is released under the MIT license, which is open and compatible with GPL. See LICENSE.txt in the distribution for more information.
