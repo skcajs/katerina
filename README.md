@@ -111,4 +111,7 @@ Rendered images are saved as `image.ppm` in the root directory.
 
 ## Licence
 
+This project is based on smallpt, licensed under the MIT License by Kevin Beason.
+The original MIT license is included below.
+
 The source is released under the MIT license, which is open and compatible with GPL. See LICENSE.txt in the distribution for more information.
